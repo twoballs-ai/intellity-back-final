@@ -1,0 +1,19 @@
+version: "3.1"
+
+services:
+  intellitydb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "54321:5432"
+    environment:
+      POSTGRES_DB: intellity_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123
+    command: postgres -c 'max_connections=10000'
+    volumes:
+      - postgres_data:/var/lib/postgresql/bases
+
+volumes:
+  postgres_data:
