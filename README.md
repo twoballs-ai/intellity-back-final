@@ -1,6 +1,6 @@
 # Система обучения Intellity LMS
-
-## Разделы:
+![alt text](image.png)
+## Категории:
 - Python
 - JavaScript
 - и т.д.
