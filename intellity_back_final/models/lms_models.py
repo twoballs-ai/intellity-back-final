@@ -165,31 +165,49 @@ class Stage(Base):
     def to_dict(self):
         item_data = {}
         if self.items:
-            print("dfssssf")
             if isinstance(self.items, ClassicLesson):
-                print("dff")
+                html_code_text = self.items.html_code_text if self.items.html_code_text is not None else ""
                 item_data = {
                     "type": self.items.type,
                     "id": self.items.id,
                     "stage_id": self.items.stage_id,
-                    "text": self.items.text
+                    "html_code_text": html_code_text
+                }
+            elif isinstance(self.items, VideoLesson):
+                video_link = self.items.video_link if self.items.video_link is not None else ""
+                item_data = {
+                    "type": self.items.type,
+                    "id": self.items.id,
+                    "stage_id": self.items.stage_id,
+                    "video_link": video_link
+                }
+            elif isinstance(self.items, ProgrammingLesson):
+                code_string = self.items.code_string if self.items.code_string is not None else ""
+                item_data = {
+                    "type": self.items.type,
+                    "id": self.items.id,
+                    "stage_id": self.items.stage_id,
+                    "code_string": code_string
                 }
             else:
                 item_data = {
                     "type": self.items.type,
                     "id": self.items.id,
-                    "stage_id": self.items.stage_id
+                    "stage_id": self.items.stage_id,
+                    "video_link": ""
                 }
         return {
             "id": self.id,
             "module_id": self.module_id,
             "title": self.title,
-            "items": self.items if self.items != None else {},
+            "items": item_data  # Use item_data here
         }
 
 class StageItem(Base):
     __tablename__ = "stage_items"
     id = Column(Integer, primary_key=True)
+    name = Column(String) 
+    descriptions = Column(String) 
     type = Column(String) # Тип элемента: classic, video, quiz
     stage_id = Column(Integer, ForeignKey("stage_model.id"))
     stage = relationship("Stage", back_populates="items")
@@ -200,22 +218,40 @@ class StageItem(Base):
 
 class ClassicLesson(StageItem):
     __mapper_args__ = {'polymorphic_identity':'classic'}
-    text = Column(String) 
+    html_code_text = Column(String) 
     # Дополнительные поля и связи для классика
 
 class VideoLesson(StageItem):
     __mapper_args__ = {'polymorphic_identity':'video'}
-    # Дополнительные поля и связи для видео
-
-class QuizLesson(StageItem):
-    __mapper_args__ = {'polymorphic_identity':'quiz'}
-    # Дополнительные поля и связи для викторины
+    video_link = Column(String) 
 
 class ProgrammingLesson(StageItem):
     __mapper_args__ = {'polymorphic_identity':'programming'}
+    code_string = Column(String) 
 
 
+class QuizLesson(StageItem):
+    __mapper_args__ = {'polymorphic_identity': 'quiz'}
+    # Дополнительные поля и связи для викторины
 
+    questions = relationship("Question", back_populates="quiz")
+
+class Question(Base):
+    __tablename__ = "questions_questions"
+    id = Column(Integer, primary_key=True)
+    question_text = Column(String)
+    order = Column(Integer)  # Порядок вопроса в квизе
+    quiz_id = Column(Integer, ForeignKey("stage_items.id"))
+    is_true_answer = Column(Boolean)  # Правильный ответ
+    quiz = relationship("QuizLesson", back_populates="questions")
+
+    def to_dict(self):
+        return {
+            "id":self.id,
+            "question_text":self.question_text,
+            "order": self.order,
+            "is_true_answer": self.is_true_answer
+        }
 # # class StagePass(models.Model):
 # #     stage = models.ForeignKey(Stage, on_delete=models.CASCADE, related_name='stage_stage_pass')
 # #     student = models.ForeignKey(Student, on_delete=models.CASCADE,related_name='stage_passed_students')

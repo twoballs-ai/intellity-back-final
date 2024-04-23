@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 import json
 
 
-from intellity_back_final.models.lms_models import Course, CourseCategory, Module, Stage as StageModel
+from intellity_back_final.models.lms_models import Course, CourseCategory, Module, Stage as StageModel, Question as QuestionModel, QuizLesson as QuizLessonModel
 
 from ..database import SessionLocal
 from ..crud import lms_crud
@@ -247,21 +247,46 @@ def add_stage_to_module(data:AddStage, db: Session = Depends(get_db)):
     )
     
     
-class AddClassicLesson(BaseModel):
-    text: str
+
 
     
 # Маршрут для создания и привязки классического урока к стадии
 @lms_views.post("/stage/{stage_id}/classic_lesson/")
-async def create_and_associate_classic_lesson_route(stage_id: int, data:AddClassicLesson, db: Session = Depends(get_db)):
+async def create_and_associate_classic_lesson_route(stage_id: int, data:lms_schemas.ClassicLesson, db: Session = Depends(get_db)):
     # Создание и привязка классического урока к стадии
     try:
-        lms_crud.create_and_associate_classic_lesson(db, stage_id, data.text)
+        new_classic_lesson = lms_crud.create_and_associate_classic_lesson(db, stage_id, data)
+        return {"message": "Classic lesson created and associated with stage successfully",
+                "items":new_classic_lesson
+                }
     except Exception as e:
         # Обработка возможных ошибок
         raise HTTPException(status_code=500, detail=str(e))
     
-    return {"message": "Classic lesson created and associated with stage successfully"}
+
+@lms_views.post("/stage/{stage_id}/video_lesson/")
+async def create_and_associate_vdeo_lesson_route(stage_id: int, data:lms_schemas.VideoLesson, db: Session = Depends(get_db)):
+    # Создание и привязка классического урока к стадии
+    try:
+        new_video_lesson = lms_crud.create_and_associate_video_lesson(db, stage_id, data)
+        return {"message": "video lesson created and associated with stage successfully",
+                "items":new_video_lesson
+                }
+    except Exception as e:
+        # Обработка возможных ошибок
+        raise HTTPException(status_code=500, detail=str(e))
+        
+
+@lms_views.post("/stage/{stage_id}/quiz_lesson/")
+async def create_quiz(stage_id: int, data:lms_schemas.QuizLesson, db: Session = Depends(get_db)):
+    try:
+        new_quiz_lesson = lms_crud.create_and_associate_quiz_lesson(db, stage_id, data)
+        return {"message": "quiz lesson created and associated with stage successfully",
+                "items":new_quiz_lesson
+                }
+    except Exception as e:
+        # Обработка возможных ошибок
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @lms_views.get("/stage/{stage_id}", response_model=lms_schemas.Stage)
@@ -272,5 +297,7 @@ def read_stage(stage_id: int, db: Session = Depends(get_db)):
     if stage is None:
         raise HTTPException(status_code=404, detail="Stage not found")
     # Возвращаем данные об этапе в JSON-формате
-    print(stage.to_dict())
     return stage.to_dict()
+
+
+

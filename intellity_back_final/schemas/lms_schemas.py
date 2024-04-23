@@ -51,34 +51,38 @@ class Chapter(ChapterBase):
 
     class Config:
         orm_mode = True
-        
-        
-class StageItemBase(BaseModel):
-    type: str
-
-class ClassicLessonBase(StageItemBase):
-    text: Optional[str]
-
-class StageItem(StageItemBase):
+ 
+ 
+class Stage(BaseModel):
     id: int
-    stage_id: int
+    module_id: int
+    title: str
+    items: Optional[dict] = None
 
     class Config:
         orm_mode = True
+        
+    
+class StageItem(BaseModel):
+
+    name: str
+    descriptions: Optional[str] = None
+
+ 
 
 class ClassicLesson(StageItem):
-    text: str
+    html_code_text: str
 
-class StageBase(BaseModel):
-    title: str
+class VideoLesson(StageItem):
+    video_link: str
 
-class StageCreate(StageBase):
-    module_id: int
+class ProgrammingLesson(StageItem):
+    pass
 
-class Stage(StageBase):
-    id: int
-    module_id: int
-    items: Optional[Union[ClassicLesson, StageItem]] = None
+class Question(BaseModel):
+    question_text: str
+    order: int
+    is_true_answer: bool
 
-    class Config:
-        orm_mode = True
+class QuizLesson(StageItem):
+    questions: List[Question]

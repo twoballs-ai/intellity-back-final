@@ -1,4 +1,7 @@
 from sqlalchemy.orm import Session
+from fastapi import FastAPI, HTTPException
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from ..models import lms_models
 from ..schemas import lms_schemas
@@ -91,9 +94,9 @@ def get_get_module_by_id(db: Session, module_id: int):
     return db.query(lms_models.Module).filter_by(id = module_id).first()
 
 
-def create_and_associate_classic_lesson(db: Session, stage_id: int, text: str) -> None:
+def create_and_associate_classic_lesson(db: Session,stage_id: int, data: dict) -> None:
     # Создаем экземпляр класса ClassicLesson с переданным текстом
-    classic_lesson = lms_models.ClassicLesson(text=text)
+
     
     # Получаем стадию (stage) по ее ID
     stage = db.query(lms_models.Stage).filter(lms_models.Stage.id == stage_id).first()
@@ -101,13 +104,62 @@ def create_and_associate_classic_lesson(db: Session, stage_id: int, text: str) -
     # Если стадия с указанным ID существует, привязываем к ней classic_lesson
     if stage:
         # Создаем экземпляр класса StageItem для "classic lesson" и привязываем его к стадии
-        classic_lesson_item = lms_models.ClassicLesson(text=text, stage=stage)
+        classic_lesson_item = lms_models.ClassicLesson(html_code_text=data.html_code_text,name=data.name, descriptions=data.descriptions, stage=stage)
         db.add(classic_lesson_item)
         db.commit()
         db.refresh(classic_lesson_item)
+        return classic_lesson_item
     else:
         # Если стадия не найдена, вы можете обработать это согласно вашим требованиям
         pass
     
+def create_and_associate_video_lesson(db: Session,stage_id: int, data: dict) -> None:
+    # Создаем экземпляр класса ClassicLesson с переданным текстом
+
+    
+    # Получаем стадию (stage) по ее ID
+    stage = db.query(lms_models.Stage).filter(lms_models.Stage.id == stage_id).first()
+    
+    # Если стадия с указанным ID существует, привязываем к ней classic_lesson
+    if stage:
+        # Создаем экземпляр класса StageItem для "classic lesson" и привязываем его к стадии
+        video_lesson_item = lms_models.VideoLesson(video_link=data.video_link,name=data.name, descriptions=data.descriptions, stage=stage)
+        db.add(video_lesson_item)
+        db.commit()
+        db.refresh(video_lesson_item)
+        return video_lesson_item
+    else:
+        # Если стадия не найдена, вы можете обработать это согласно вашим требованиям
+        pass   
+    
+    
+def create_and_associate_quiz_lesson(db: Session, stage_id: int, data: dict):
+    print(data)
+
+    # Проверяем, существует ли этап с указанным stage_id
+    stage = db.query(lms_models.Stage).filter(lms_models.Stage.id == stage_id).first()
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage not found")
+
+    # Создаем новый квиз
+    quiz = lms_models.QuizLesson(name=data.name, descriptions=data.descriptions, stage=stage)
+    db.add(quiz)
+    db.commit()
+
+    # Создаем вопросы для квиза
+    for question_data in data.questions:
+        question = lms_models.Question(question_text=question_data.question_text, 
+                                        order=question_data.order, 
+                                        is_true_answer=question_data.is_true_answer, 
+                                        quiz=quiz)
+        db.add(question)
+
+    db.commit()
+    return quiz
+
+
+    
 def get_stage(db: Session, stage_id: int):
     return db.query(lms_models.Stage).filter(lms_models.Stage.id == stage_id).first()
+
+
