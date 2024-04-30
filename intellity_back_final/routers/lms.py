@@ -19,7 +19,7 @@ from sqlalchemy import and_, func
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, validator
 from sqlalchemy.orm import Session
-
+from ..auth import get_user_id_by_token
 import json
 
 
@@ -300,4 +300,8 @@ def read_stage(stage_id: int, db: Session = Depends(get_db)):
     return stage.to_dict()
 
 
-
+@lms_views.get("/teacher-courses/", response_model=List[lms_schemas.Course])
+def get_teacher_courses(user_id: int = Depends(get_user_id_by_token), skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    # Получение курсов для указанного преподавателя из базы данных, используя идентификатор пользователя
+    courses = lms_crud.get_teacher_courses(db, teacher_id=user_id, skip=skip, limit=limit)
+    return courses

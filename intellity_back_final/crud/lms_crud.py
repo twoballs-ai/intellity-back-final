@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker
 
 from ..models import lms_models
 from ..schemas import lms_schemas
-
+from typing import List
 
 # def get_user(db: Session, user_id: int):
 #     return db.query(models.User).filter(models.User.id == user_id).first()
@@ -163,3 +163,6 @@ def get_stage(db: Session, stage_id: int):
     return db.query(lms_models.Stage).filter(lms_models.Stage.id == stage_id).first()
 
 
+def get_teacher_courses(db: Session, teacher_id: int, skip: int = 0, limit: int = 100) -> List[lms_models.Course]:
+    # Query the database to retrieve courses for the specified teacher
+    return db.query(lms_models.Course).filter(lms_models.Course.teacher_id == teacher_id).offset(skip).limit(limit).all()

@@ -5,6 +5,7 @@ from typing import Optional
 import jwt
 import bcrypt
 import os
+from fastapi import Header
 
 from intellity_back_final.crud.user_crud import get_user
 
@@ -36,7 +37,7 @@ def authenticate_user(username: str, password: str, db):
     # Получаем пользователя по имени пользователя (email)
 
     user = get_user(db, username)
-    print(user)
+    # print(user)
     # Если пользователь не найден, возвращаем None
     if not user:
         return None
@@ -55,5 +56,19 @@ def verify_token(token: str, credentials_exception):
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
-    except (jwt.JWTError, jwt.ExpiredSignatureError, jwt.DecodeError):
+    except (jwt.exceptions.DecodeError, jwt.ExpiredSignatureError, jwt.DecodeError):
         raise credentials_exception
+    
+
+
+async def get_user_id_by_token(authorization: Optional[str] = Header(None)):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Отсутствует заголовок авторизации")
+    
+    try:
+        token = authorization.split("Bearer ")[1]
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_id = payload["user_id"]  # Предполагается, что идентификатор пользователя хранится в полезной нагрузке токена
+        return user_id
+    except (IndexError, jwt.exceptions.DecodeError):
+        raise HTTPException(status_code=401, detail="Неверный или отсутствующий токен")

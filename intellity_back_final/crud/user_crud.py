@@ -30,5 +30,5 @@ def create_student(db: Session, email: str, password: str, interested_categories
 
 def get_user(db: Session, username: str):
     user = db.query(user_models.User).filter(user_models.User.email == username).first()
-    # print(user)
+    print(user)
     return user

@@ -154,7 +154,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     refresh_token = create_refresh_token(
         data={"sub": user.email, "type": "refresh"}, expires_delta=refresh_token_expires
     )
-    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "Bearer"}
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "Bearer", "user_id": user.id, "type":user.type}
 
 
 
@@ -173,3 +173,5 @@ async def refresh_access_token(refresh_token: str = Form(...)):
         data={"sub": username, "type": "access"}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "Bearer"}
+
+
