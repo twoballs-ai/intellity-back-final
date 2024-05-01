@@ -42,8 +42,8 @@ def get_course_by_title(db: Session, title: str):
 def get_get_course_by_id(db: Session, course_id: int):
     return db.query(lms_models.Course).filter_by(id = course_id).first()
 
-def create_course(db: Session, course: lms_schemas.CourseCreate):
-    db_course = lms_models.Course(teacher_id=course.teacher_id, category=course.category, title=course.title, description=course.description)
+def create_course(db: Session, course: lms_schemas.CourseCreate, user_id:int):
+    db_course = lms_models.Course(teacher_id=user_id, category=course.category, title=course.title, description=course.description)
     db.add(db_course)
     db.commit()
     db.refresh(db_course)
@@ -94,25 +94,17 @@ def get_get_module_by_id(db: Session, module_id: int):
     return db.query(lms_models.Module).filter_by(id = module_id).first()
 
 
-def create_and_associate_classic_lesson(db: Session,stage_id: int, data: dict) -> None:
-    # Создаем экземпляр класса ClassicLesson с переданным текстом
 
+def create_and_associate_classic_lesson(db: Session,  data: lms_schemas.ClassicLesson) -> lms_models.ClassicLesson:
+
+    classic_lesson = lms_models.ClassicLesson(module_id=data.module_id, title=data.title, html_code_text=data.html_code_text)
+    db.add(classic_lesson)
+    db.commit()
+    db.refresh(classic_lesson)
+    print(classic_lesson)
     
-    # Получаем стадию (stage) по ее ID
-    stage = db.query(lms_models.Stage).filter(lms_models.Stage.id == stage_id).first()
-    
-    # Если стадия с указанным ID существует, привязываем к ней classic_lesson
-    if stage:
-        # Создаем экземпляр класса StageItem для "classic lesson" и привязываем его к стадии
-        classic_lesson_item = lms_models.ClassicLesson(html_code_text=data.html_code_text,name=data.name, descriptions=data.descriptions, stage=stage)
-        db.add(classic_lesson_item)
-        db.commit()
-        db.refresh(classic_lesson_item)
-        return classic_lesson_item
-    else:
-        # Если стадия не найдена, вы можете обработать это согласно вашим требованиям
-        pass
-    
+    return classic_lesson.to_dict()
+
 def create_and_associate_video_lesson(db: Session,stage_id: int, data: dict) -> None:
     # Создаем экземпляр класса ClassicLesson с переданным текстом
 

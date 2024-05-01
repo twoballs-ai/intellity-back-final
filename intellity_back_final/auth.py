@@ -68,7 +68,7 @@ async def get_user_id_by_token(authorization: Optional[str] = Header(None)):
     try:
         token = authorization.split("Bearer ")[1]
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        user_id = payload["user_id"]  # Предполагается, что идентификатор пользователя хранится в полезной нагрузке токена
-        return user_id
+        username = payload["sub"]  # Предполагается, что идентификатор пользователя хранится в полезной нагрузке токена
+        return username
     except (IndexError, jwt.exceptions.DecodeError):
         raise HTTPException(status_code=401, detail="Неверный или отсутствующий токен")

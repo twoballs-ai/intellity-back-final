@@ -144,93 +144,83 @@ class Module(Base):
 class Stage(Base):
     __tablename__ = "stage_model"  
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
-    # course = Column(Integer, ForeignKey("course_model.id", ondelete='CASCADE'))
-    module_id: Mapped[int] = mapped_column(ForeignKey("module_model.id", ondelete='CASCADE')) 
-    title: Mapped[str] = mapped_column(String(30))
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    type = Column(String(20))  # Указываем, что это поле относится к таблице stage_model
+    module_id = Column(Integer, ForeignKey("module_model.id", ondelete='CASCADE')) 
+    title = Column(String(30))
+    questions = relationship("Question", back_populates="quiz")
+    module_rel_model = relationship("Module", back_populates="stage_rel_model")
 
-    module_rel_model: Mapped["Module"] = relationship(back_populates="stage_rel_model")
-    items = relationship("StageItem", back_populates="stage", uselist=False)
+    __mapper_args__ = {
+        'polymorphic_identity':'stage_item',
+        'polymorphic_on': type
+    }
+
     class Meta:
         verbose_name = '5. этап'
         verbose_name_plural = '5. этап'
 
-    # def get_stage_pass_status(self):
-    #     get_stage_pass_status = StagePass.objects.filter(stage=self.pk)
-    #     return serializers.serialize('json',get_stage_pass_status)
-    
     def __str__(self):
         return f"{self.id}"
        
     def to_dict(self):
-        item_data = {}
-        if self.items:
-            if isinstance(self.items, ClassicLesson):
-                html_code_text = self.items.html_code_text if self.items.html_code_text is not None else ""
-                item_data = {
-                    "type": self.items.type,
-                    "id": self.items.id,
-                    "stage_id": self.items.stage_id,
-                    "html_code_text": html_code_text
-                }
-            elif isinstance(self.items, VideoLesson):
-                video_link = self.items.video_link if self.items.video_link is not None else ""
-                item_data = {
-                    "type": self.items.type,
-                    "id": self.items.id,
-                    "stage_id": self.items.stage_id,
-                    "video_link": video_link
-                }
-            elif isinstance(self.items, ProgrammingLesson):
-                code_string = self.items.code_string if self.items.code_string is not None else ""
-                item_data = {
-                    "type": self.items.type,
-                    "id": self.items.id,
-                    "stage_id": self.items.stage_id,
-                    "code_string": code_string
-                }
-            else:
-                item_data = {
-                    "type": self.items.type,
-                    "id": self.items.id,
-                    "stage_id": self.items.stage_id,
-                    "video_link": ""
-                }
+        lesson_data = None
+        if isinstance(self, ClassicLesson):
+            html_code_text = self.html_code_text if self.html_code_text is not None else ""
+            lesson_data = {
+                "html_code_text": html_code_text,
+            }
+        elif isinstance(self, VideoLesson):
+            video_link = self.video_link if self.video_link is not None else ""
+            lesson_data = {
+                "video_link": video_link
+            }
+        elif isinstance(self, ProgrammingLesson):
+            code_string = self.code_string if self.code_string is not None else ""
+            lesson_data = {
+                "code_string": code_string
+            }
+        elif isinstance(self, QuizLesson):
+            # Дополнительные поля для викторины, если необходимо
+            lesson_data = {
+
+                # Дополнительные поля
+            }
+
         return {
             "id": self.id,
             "module_id": self.module_id,
+            "type":self.type,
             "title": self.title,
-            "items": item_data  # Use item_data here
+            "lesson": lesson_data  # Use lesson_data here
         }
 
-class StageItem(Base):
-    __tablename__ = "stage_items"
-    id = Column(Integer, primary_key=True)
-    name = Column(String) 
-    descriptions = Column(String) 
-    type = Column(String) # Тип элемента: classic, video, quiz
-    stage_id = Column(Integer, ForeignKey("stage_model.id"))
-    stage = relationship("Stage", back_populates="items")
-    __mapper_args__ = {
-        'polymorphic_identity':'base',
-        'polymorphic_on':'type'
-    }
 
-class ClassicLesson(StageItem):
+class ClassicLesson(Stage):
     __mapper_args__ = {'polymorphic_identity':'classic'}
     html_code_text = Column(String) 
-    # Дополнительные поля и связи для классика
+    # Дополнительные поля и связи для классика. ниже я получаю методы род компонента и передаю в дочерний.
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-class VideoLesson(StageItem):
+    def to_dict(self):
+        lesson_data = {
+            "html_code_text": self.html_code_text if self.html_code_text is not None else ""
+        }
+        return {
+            **super().to_dict(),
+            "lesson": lesson_data
+        }
+class VideoLesson(Stage):
     __mapper_args__ = {'polymorphic_identity':'video'}
     video_link = Column(String) 
 
-class ProgrammingLesson(StageItem):
+ 
+class ProgrammingLesson(Stage):
     __mapper_args__ = {'polymorphic_identity':'programming'}
     code_string = Column(String) 
 
-
-class QuizLesson(StageItem):
+class QuizLesson(Stage):
     __mapper_args__ = {'polymorphic_identity': 'quiz'}
     # Дополнительные поля и связи для викторины
 
@@ -241,7 +231,7 @@ class Question(Base):
     id = Column(Integer, primary_key=True)
     question_text = Column(String)
     order = Column(Integer)  # Порядок вопроса в квизе
-    quiz_id = Column(Integer, ForeignKey("stage_items.id"))
+    quiz_id = Column(Integer, ForeignKey("stage_model.id"))
     is_true_answer = Column(Boolean)  # Правильный ответ
     quiz = relationship("QuizLesson", back_populates="questions")
 

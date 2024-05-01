@@ -19,7 +19,6 @@ class CourseCategory(CourseCategoryBase):
 
 class CourseBase(BaseModel):
     category: int
-    teacher_id: int
     title: str
     description: Union[str, None] = None
 
@@ -54,29 +53,23 @@ class Chapter(ChapterBase):
  
  
 class Stage(BaseModel):
-    id: int
     module_id: int
     title: str
-    items: Optional[dict] = None
+    descriptions: Optional[str] = None
 
     class Config:
         orm_mode = True
-        
-    
-class StageItem(BaseModel):
 
-    name: str
-    descriptions: Optional[str] = None
-
- 
-
-class ClassicLesson(StageItem):
+class ClassicLesson(Stage):
     html_code_text: str
 
-class VideoLesson(StageItem):
+    class Config:
+        orm_mode = True
+
+class VideoLesson(Stage):
     video_link: str
 
-class ProgrammingLesson(StageItem):
+class ProgrammingLesson(Stage):
     pass
 
 class Question(BaseModel):
@@ -84,5 +77,7 @@ class Question(BaseModel):
     order: int
     is_true_answer: bool
 
-class QuizLesson(StageItem):
+
+class QuizLesson(Stage):
     questions: List[Question]
+

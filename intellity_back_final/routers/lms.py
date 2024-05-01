@@ -19,7 +19,7 @@ from sqlalchemy import and_, func
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, validator
 from sqlalchemy.orm import Session
-from ..auth import get_user_id_by_token
+from ..auth import  get_user_id_by_token
 import json
 
 
@@ -116,7 +116,7 @@ def read_courses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db))
 @lms_views.get("/course/")
 def read_courses(course_id:int, db: Session = Depends(get_db)):
     
-    course = lms_crud.get_get_course_by_id(db,course_id=course_id)
+    course = lms_crud.get_get_course_by_id(db,course_id=course_id,)
     chapters=db.query().filter(ChapterModel.course_id == course_id).all()
     print(chapters)
     data=[]
@@ -142,11 +142,13 @@ def read_courses(course_id:int, db: Session = Depends(get_db)):
 
 
 @lms_views.post("/course/", response_model=lms_schemas.Course)
-def create_course_category(course: lms_schemas.CourseCreate, db: Session = Depends(get_db)):
-    db_course = lms_crud.get_course_by_title(db, title=course.title)
+def create_course_category(course: lms_schemas.CourseCreate, user_id: int = Depends(get_user_id_by_token), db: Session = Depends(get_db)):
+    db_course = lms_crud.get_course_by_title(db, title=course.title,)
     if db_course:
         raise HTTPException(status_code=400, detail="курс уже существует")
-    return lms_crud.create_course(db=db, course=course)
+    return lms_crud.create_course(db=db, course=course, user_id=user_id)
+
+
 
 @lms_views.get("/course-chapter-list/{course_id}")
 def read_chapter(course_id, db: Session = Depends(get_db)):
@@ -230,41 +232,24 @@ class AddStage(BaseModel):
     title: str
     module_id:int
     
-@lms_views.post("/add_stage_to_module/")
-def add_stage_to_module(data:AddStage, db: Session = Depends(get_db)):
-    stage_create = StageModel(
-            module_id=data.module_id,
-            title=data.title
-        )
-    db.add(stage_create)
-    db.commit()
-    return JSONResponse(
-        content={
-            "status": True,
-            "modules": stage_create.to_dict(),
-        },
-        status_code=200,
-    )
-    
-    
 
 
     
 # Маршрут для создания и привязки классического урока к стадии
-@lms_views.post("/stage/{stage_id}/classic_lesson/")
-async def create_and_associate_classic_lesson_route(stage_id: int, data:lms_schemas.ClassicLesson, db: Session = Depends(get_db)):
+@lms_views.post("/add_stage_to_module/classic_lesson/")
+async def create_and_associate_classic_lesson_route(data:lms_schemas.ClassicLesson, db: Session = Depends(get_db)):
     # Создание и привязка классического урока к стадии
     try:
-        new_classic_lesson = lms_crud.create_and_associate_classic_lesson(db, stage_id, data)
+        new_classic_lesson = lms_crud.create_and_associate_classic_lesson(db, data)
         return {"message": "Classic lesson created and associated with stage successfully",
-                "items":new_classic_lesson
+                "data":new_classic_lesson
                 }
     except Exception as e:
         # Обработка возможных ошибок
         raise HTTPException(status_code=500, detail=str(e))
     
 
-@lms_views.post("/stage/{stage_id}/video_lesson/")
+@lms_views.post("/add_stage_to_module/video_lesson/")
 async def create_and_associate_vdeo_lesson_route(stage_id: int, data:lms_schemas.VideoLesson, db: Session = Depends(get_db)):
     # Создание и привязка классического урока к стадии
     try:
@@ -277,7 +262,7 @@ async def create_and_associate_vdeo_lesson_route(stage_id: int, data:lms_schemas
         raise HTTPException(status_code=500, detail=str(e))
         
 
-@lms_views.post("/stage/{stage_id}/quiz_lesson/")
+@lms_views.post("/add_stage_to_module/quiz_lesson/")
 async def create_quiz(stage_id: int, data:lms_schemas.QuizLesson, db: Session = Depends(get_db)):
     try:
         new_quiz_lesson = lms_crud.create_and_associate_quiz_lesson(db, stage_id, data)
