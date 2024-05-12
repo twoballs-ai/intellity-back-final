@@ -16,6 +16,9 @@ from typing import Optional
 
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+
+
+
 class CourseCategory(Base):
     __tablename__ = "course_category_model"    
 
@@ -36,7 +39,11 @@ class CourseCategory(Base):
             "message": self.description,
         }
 
- 
+    def to_select(self):
+        return {
+            "value": self.id,
+            "label": self.title,
+        }
 
 class Course(Base):
     __tablename__ = "course_model"    

@@ -56,29 +56,39 @@ class AddChapter(BaseModel):
     description: str
     
     
-@lms_views.get("/category/", response_model=List[lms_schemas.CourseCategory])
-def read_course_categoryies(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    
-    categories = lms_crud.get_categoryes(db, skip=skip, limit=limit)
+@lms_views.get("/category/")
+def read_course_categories(skip: int = 0, limit: int = 100, to_select: bool = False, db: Session = Depends(get_db)):
 
-    categories = [
-        {
-            "id": category.id,
-            "title": category.title,
-            "description": category.description,
-            "total_courses": db.query(Course).filter(Course.category == category.id).count()
-        }
-        for category in categories
-    ]
+    if to_select:
+        categories = lms_crud.get_categoryes(db, skip=skip, limit=limit)
+        categories_select = [category.to_select() for category in categories]
+        
+        return JSONResponse(
+            content={
+                "status": True,
+                "data": categories_select,
+            },
+            status_code=200,
+        )
+    else:
+        categories = lms_crud.get_categoryes(db, skip=skip, limit=limit)
+        categories_data = [
+            {
+                "id": category.id,
+                "title": category.title,
+                "description": category.description,
+                "total_courses": db.query(Course).filter(Course.category == category.id).count()
+            }
+            for category in categories
+        ]
 
-    return JSONResponse(
-        content={
-            "status": True,
-            "data": categories,
-        },
-        status_code=200,
-    )
-
+        return JSONResponse(
+            content={
+                "status": True,
+                "data": categories_data,
+            },
+            status_code=200,
+        )
 @lms_views.post("/category/", response_model=lms_schemas.CourseCategory)
 def create_course_category(category: lms_schemas.CourseCategoryCreate, db: Session = Depends(get_db)):
     db_category = lms_crud.get_category_by_title(db, title=category.title)
