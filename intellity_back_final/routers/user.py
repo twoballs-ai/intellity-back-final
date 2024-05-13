@@ -139,7 +139,7 @@ def create_student_view(student: StudentCreate, db: Session = Depends(get_db)):
 @user_views.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(form_data.username, form_data.password,db)
-
+    print(user)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
