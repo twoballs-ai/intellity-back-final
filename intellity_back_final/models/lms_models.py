@@ -95,7 +95,7 @@ class Chapter(Base):
     course_id: Mapped[int] = mapped_column(ForeignKey("course_model.id", ondelete='CASCADE')) 
     title: Mapped[str] = mapped_column(String(30))
     description: Mapped[str] = mapped_column(Text)
-    sorted:Mapped[int] = mapped_column(Integer, default=0)
+    sorted:Mapped[int] = mapped_column(Integer, default=1)
 
     course_model: Mapped["Course"] = relationship(back_populates="chapter_model")
     
