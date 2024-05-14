@@ -62,7 +62,7 @@ def get_course_chapters(db: Session, course_id:int, skip: int = 0, limit: int = 
             "title": chapter.title,
             "description": chapter.description,
             "modules": modules,
-            "sorted":chapter.sorted,
+            "sort_index":chapter.sort_index,
         }
         chapters_with_modules.append(chapter_data)
     

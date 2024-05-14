@@ -95,7 +95,7 @@ class Chapter(Base):
     course_id: Mapped[int] = mapped_column(ForeignKey("course_model.id", ondelete='CASCADE')) 
     title: Mapped[str] = mapped_column(String(30))
     description: Mapped[str] = mapped_column(Text)
-    sorted:Mapped[int] = mapped_column(Integer, default=1)
+    sort_index:Mapped[int] = mapped_column(Integer, default=1)
 
     course_model: Mapped["Course"] = relationship(back_populates="chapter_model")
     
@@ -116,7 +116,7 @@ class Chapter(Base):
             "title": self.title,
             "description": self.description,
             "modules":self.module_rel_model,
-            "sorted":self.sorted
+            "sort_index":self.sort_index
         }
     def __repr__(self):
         return f"{self.title}"

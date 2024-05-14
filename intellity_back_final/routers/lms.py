@@ -194,27 +194,49 @@ def read_module(module_id:int, db: Session = Depends(get_db)):
 
 
 @lms_views.post("/add_chapter_to_course/")
-async def add_chapter_to_course(data:AddChapter, db: Session = Depends(get_db)):
-    # try:
-    chapter_create = ChapterModel(
+async def add_chapter_to_course(data: AddChapter, db: Session = Depends(get_db)):
+    try:
+        # Получаем количество глав для данного course_id
+        chapter_count = db.query(func.count(ChapterModel.id)).filter(ChapterModel.course_id == data.course_id).scalar()
+
+        # Создаем главу и устанавливаем sort_index
+        chapter_create = ChapterModel(
             course_id=data.course_id,
             title=data.title,
-            description=data.description
+            description=data.description,
+            sort_index=chapter_count + 1  # Устанавливаем sort_index как количество глав плюс один
         )
-    db.add(chapter_create)
+        db.add(chapter_create)
+        db.commit()
+
+        return JSONResponse(
+            content={
+                "status": True,
+                "chapters": chapter_create.to_dict(),
+                "chapter_count": chapter_count + 1  # Возвращаем количество глав, увеличенное на один
+            },
+            status_code=200,
+        )
+    except Exception as e:
+        return JSONResponse(
+            content={"status": False, "error": str(e)},
+            status_code=500,
+        )
+    
+@lms_views.delete("/delete-chapter/")
+def delete_chapter(chapter_id: int, db: Session = Depends(get_db)):
+    chapter = db.query(ChapterModel).filter(ChapterModel.id == chapter_id).first()
+    if chapter is None:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+    db.delete(chapter)
     db.commit()
     return JSONResponse(
         content={
             "status": True,
-            "chapters": chapter_create.to_dict(),
+            "text_for_budges":"Удаление раздела произошло успешно."
         },
         status_code=200,
     )
-    # except IntegrityError as e:
-    #     db.rollback()
-    #     return {"error": "An error occurred while adding the chapter. Please try again."}
-    
-    
 
 class AddModule(BaseModel):
     title: str
