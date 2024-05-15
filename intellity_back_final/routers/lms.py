@@ -260,10 +260,21 @@ def add_module_to_chapter(data:AddModule, db: Session = Depends(get_db)):
         status_code=200,
     )
     
-class AddStage(BaseModel):
-    title: str
-    module_id:int
-    
+
+@lms_views.delete("/delete-module/")
+def delete_module(module_id: int, db: Session = Depends(get_db)):
+    module = db.query(Module).filter(Module.id == module_id).first()
+    if module is None:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+    db.delete(module)
+    db.commit()
+    return JSONResponse(
+        content={
+            "status": True,
+            "text_for_budges":"Удаление модуля произошло успешно."
+        },
+        status_code=200,
+    )
 
 
     
@@ -306,7 +317,7 @@ async def create_quiz(stage_id: int, data:lms_schemas.QuizLesson, db: Session = 
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@lms_views.get("/stage/{stage_id}", response_model=lms_schemas.Stage)
+@lms_views.get("/stage/{stage_id}")
 def read_stage(stage_id: int, db: Session = Depends(get_db)):
     # Пытаемся получить данные об этапе
     stage = lms_crud.get_stage(db, stage_id=stage_id)
