@@ -16,7 +16,7 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from intellity_back_final.models.lms_models import *
+from intellity_back_final.models.course_editor_lms_models import *
 from intellity_back_final.models.user_models import *
 # target_metadata = mymodel.Base.metadata
 target_metadata = [Base.metadata]

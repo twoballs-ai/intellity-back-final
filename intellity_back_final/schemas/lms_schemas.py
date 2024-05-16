@@ -55,12 +55,20 @@ class Chapter(ChapterBase):
 class Stage(BaseModel):
     module_id: int
     title: str
-    descriptions: Optional[str] = None
+
 
     class Config:
         orm_mode = True
 
 class ClassicLesson(Stage):
+    html_code_text: str
+
+    class Config:
+        orm_mode = True
+
+class ClassicLessonUpdate(BaseModel):
+    stage_id: int
+    title: str
     html_code_text: str
 
     class Config:

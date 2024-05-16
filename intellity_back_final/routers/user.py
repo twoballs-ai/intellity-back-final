@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 import json
 
-from intellity_back_final.models.lms_models import Course, CourseCategory
+from intellity_back_final.models.course_editor_lms_models import Course, CourseCategory
 from intellity_back_final.models.user_models import User
 from ..database import SessionLocal
 from ..crud import user_crud

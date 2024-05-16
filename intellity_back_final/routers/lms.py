@@ -23,12 +23,12 @@ from ..auth import  get_user_id_by_token
 import json
 
 
-from intellity_back_final.models.lms_models import Course, CourseCategory, Module, Stage as StageModel, Question as QuestionModel, QuizLesson as QuizLessonModel
+from intellity_back_final.models.course_editor_lms_models import Course, CourseCategory, Module, Stage as StageModel, Question as QuestionModel, QuizLesson as QuizLessonModel
 
 from ..database import SessionLocal
 from ..crud import lms_crud
 from ..schemas import lms_schemas
-from ..models.lms_models import Chapter as ChapterModel
+from ..models.course_editor_lms_models import Chapter as ChapterModel
 lms_views = APIRouter()
 
 
@@ -58,7 +58,17 @@ class AddChapter(BaseModel):
     
 @lms_views.get("/category/")
 def read_course_categories(skip: int = 0, limit: int = 100, to_select: bool = False, db: Session = Depends(get_db)):
+    """_summary_
 
+    Args:
+        skip (int, optional): _description_. Defaults to 0.
+        limit (int, optional): _description_. Defaults to 100.
+        to_select (bool, optional): _description_. Defaults to False.
+        db (Session, optional): _description_. Defaults to Depends(get_db).
+
+    Returns:
+        _type_: _description_
+    """
     if to_select:
         categories = lms_crud.get_categoryes(db, skip=skip, limit=limit)
         categories_select = [category.to_select() for category in categories]
@@ -290,7 +300,18 @@ async def create_and_associate_classic_lesson_route(data:lms_schemas.ClassicLess
     except Exception as e:
         # Обработка возможных ошибок
         raise HTTPException(status_code=500, detail=str(e))
-    
+        
+@lms_views.put("/update/classic_lesson/")
+async def update_classic_lesson(data:lms_schemas.ClassicLessonUpdate, db: Session = Depends(get_db)):
+    # Создание и привязка классического урока к стадии
+    try:
+        new_classic_lesson = lms_crud.update_classic_lesson(db, data)
+        return {"message": "Classic lesson created and associated with stage successfully",
+                "data":new_classic_lesson
+                }
+    except Exception as e:
+        # Обработка возможных ошибок
+        raise HTTPException(status_code=500, detail=str(e))
 
 @lms_views.post("/add_stage_to_module/video_lesson/")
 async def create_and_associate_vdeo_lesson_route(stage_id: int, data:lms_schemas.VideoLesson, db: Session = Depends(get_db)):
@@ -315,6 +336,21 @@ async def create_quiz(stage_id: int, data:lms_schemas.QuizLesson, db: Session = 
     except Exception as e:
         # Обработка возможных ошибок
         raise HTTPException(status_code=500, detail=str(e))
+
+@lms_views.delete("/delete-stage/")
+def delete_stage(stage_id: int, db: Session = Depends(get_db)):
+    module = db.query(StageModel).filter(StageModel.id == stage_id).first()
+    if module is None:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+    db.delete(module)
+    db.commit()
+    return JSONResponse(
+        content={
+            "status": True,
+            "text_for_budges":"Удаление урока произошло успешно."
+        },
+        status_code=200,
+    )
 
 
 @lms_views.get("/stage/{stage_id}")

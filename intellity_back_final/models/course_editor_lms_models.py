@@ -87,7 +87,18 @@ class Course(Base):
 # #         first_module_stage_pk = Stage.objects.filter(module = course_module).values_list('pk', flat=True).first()
 # #         return {'first_module_pk':course_module,'first_stage_pk':first_module_stage_pk}
     
+# class ChapterEnrollment(Base):
+#     __tablename__ = "chapter_enrollment"
 
+#     student_id = Column(Integer, ForeignKey("student_model.id"), primary_key=True)
+#     chapter_id = Column(Integer, ForeignKey("chapter_model.id"), primary_key=True)
+#     start_time = Column(DateTime, default=func.now())  # Время начала прохождения
+#     end_time = Column(DateTime)  # Время окончания прохождения
+#     deadline = Column(DateTime)  # Срок сдачи
+
+#     # Опционально: добавьте связи
+#     student = relationship("Student", back_populates="chapters_enrolled")
+#     chapter = relationship("Chapter", back_populates="students_enrolled")
 class Chapter(Base):
     __tablename__ = "chapter_model"  
 
@@ -96,7 +107,10 @@ class Chapter(Base):
     title: Mapped[str] = mapped_column(String(30))
     description: Mapped[str] = mapped_column(Text)
     sort_index:Mapped[int] = mapped_column(Integer, default=1)
-
+    is_exam: Mapped[bool] = mapped_column(Boolean, default=False)
+    exam_duration_minutes:Mapped[int] = Column(Integer)
+    previous_chapter_id = Column(Integer, ForeignKey("chapter_model.id"))
+    previous_chapter = relationship("Chapter", remote_side=[id])
     course_model: Mapped["Course"] = relationship(back_populates="chapter_model")
     
     module_rel_model: Mapped[List["Module"]] = relationship(
@@ -121,7 +135,13 @@ class Chapter(Base):
     def __repr__(self):
         return f"{self.title}"
 
-
+    def can_start(self, student):
+        if not self.previous_chapter:
+            return True  # Если нет предыдущей главы, можно начать
+        if self.previous_chapter in student.completed_chapters:
+            return True  # Если предыдущая глава пройдена, можно начать
+        return False
+    
 class Module(Base):
     __tablename__ = "module_model"  
 
