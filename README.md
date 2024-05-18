@@ -1,5 +1,8 @@
 # Система обучения Intellity LMS
 ![alt text](image.png)
+![image](https://github.com/twoballs-ai/intellity-back-final/assets/83840596/0a2b2463-7dc2-4cdd-bbfb-396edddcabd7)
+
+
 ## Категории:
 - Python
 - JavaScript
