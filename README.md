@@ -1,6 +1,7 @@
 # Система обучения Intellity LMS
 ![alt text](image.png)
-![image](https://github.com/twoballs-ai/intellity-back-final/assets/83840596/58a6b1c6-af49-44e2-9d4b-fb1acda851cd)
+![image](https://github.com/twoballs-ai/intellity-back-final/assets/83840596/0a2b2463-7dc2-4cdd-bbfb-396edddcabd7)
+
 
 ## Категории:
 - Python
