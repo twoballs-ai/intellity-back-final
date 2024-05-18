@@ -74,6 +74,14 @@ class ClassicLessonUpdate(BaseModel):
     class Config:
         orm_mode = True
 
+class VideoLessonUpdate(BaseModel):
+    stage_id: int
+    title: str
+    video_link: str
+
+    class Config:
+        orm_mode = True
+
 class VideoLesson(Stage):
     video_link: str
 

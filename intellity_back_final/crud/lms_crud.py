@@ -127,26 +127,37 @@ def update_classic_lesson(db: Session, data: lms_schemas.ClassicLessonUpdate) ->
     # Возвращаем обновленный урок в виде словаря
     return classic_lesson.to_dict()
 
-def create_and_associate_video_lesson(db: Session,stage_id: int, data: dict) -> None:
-    # Создаем экземпляр класса ClassicLesson с переданным текстом
+def create_and_associate_video_lesson(db: Session,  data: lms_schemas.VideoLesson) -> course_editor_lms_models.VideoLesson:
 
+    video_lesson = course_editor_lms_models.VideoLesson(module_id=data.module_id, title=data.title, video_link=data.video_link)
+    db.add(video_lesson)
+    db.commit()
+    db.refresh(video_lesson)
+    print(video_lesson)
     
-    # Получаем стадию (stage) по ее ID
-    stage = db.query(course_editor_lms_models.Stage).filter(course_editor_lms_models.Stage.id == stage_id).first()
-    
-    # Если стадия с указанным ID существует, привязываем к ней classic_lesson
-    if stage:
-        # Создаем экземпляр класса StageItem для "classic lesson" и привязываем его к стадии
-        video_lesson_item = course_editor_lms_models.VideoLesson(video_link=data.video_link,name=data.name, descriptions=data.descriptions, stage=stage)
-        db.add(video_lesson_item)
-        db.commit()
-        db.refresh(video_lesson_item)
-        return video_lesson_item
-    else:
-        # Если стадия не найдена, вы можете обработать это согласно вашим требованиям
-        pass   
+    return video_lesson.to_dict()
     
     
+def update_video_lesson(db: Session, data: lms_schemas.VideoLessonUpdate) -> dict:
+    # Находим урок по его идентификатору
+    video_lesson = db.query(course_editor_lms_models.VideoLesson).filter_by(id=data.stage_id).first()
+    
+    # Если урок не найден, можно выполнить соответствующие действия
+    if not video_lesson:
+        return None  # Или какой-то другой возврат ошибки
+    
+    # Обновляем данные урока
+    video_lesson.title = data.title
+    video_lesson.video_link = data.video_link
+    
+    # Фиксируем изменения в базе данных
+    db.commit()
+    # Обновляем объект урока, чтобы он содержал актуальные данные из базы данных
+    db.refresh(video_lesson)
+    
+    # Возвращаем обновленный урок в виде словаря
+    return video_lesson.to_dict()
+
 def create_and_associate_quiz_lesson(db: Session, stage_id: int, data: dict):
     print(data)
 

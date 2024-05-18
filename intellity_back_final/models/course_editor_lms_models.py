@@ -194,35 +194,13 @@ class Stage(Base):
         return f"{self.id}"
        
     def to_dict(self):
-        lesson_data = None
-        if isinstance(self, ClassicLesson):
-            html_code_text = self.html_code_text if self.html_code_text is not None else ""
-            lesson_data = {
-                "html_code_text": html_code_text,
-            }
-        elif isinstance(self, VideoLesson):
-            video_link = self.video_link if self.video_link is not None else ""
-            lesson_data = {
-                "video_link": video_link
-            }
-        elif isinstance(self, ProgrammingLesson):
-            code_string = self.code_string if self.code_string is not None else ""
-            lesson_data = {
-                "code_string": code_string
-            }
-        elif isinstance(self, QuizLesson):
-            # Дополнительные поля для викторины, если необходимо
-            lesson_data = {
-
-                # Дополнительные поля
-            }
 
         return {
             "id": self.id,
             "module_id": self.module_id,
             "type":self.type,
             "title": self.title,
-            "lesson": lesson_data  # Use lesson_data here
+
         }
 
 
@@ -235,40 +213,73 @@ class ClassicLesson(Stage):
 
     def to_dict(self):
         lesson_data = {
-            "html_code_text": self.html_code_text if self.html_code_text is not None else ""
+            "html_code_text": self.html_code_text if self.html_code_text is not None else "",
+            
         }
         return {
             **super().to_dict(),
             "lesson": lesson_data
         }
+    
+    
 class VideoLesson(Stage):
-    __mapper_args__ = {'polymorphic_identity':'video'}
-    video_link = Column(String) 
+    __mapper_args__ = {'polymorphic_identity': 'video'}
+    video_link = Column(String)
 
- 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def to_dict(self):
+        lesson_data = {
+            "video_link": self.video_link if self.video_link is not None else ""
+        }
+        return {
+            **super().to_dict(),
+            "lesson": lesson_data
+        }
+
+
 class ProgrammingLesson(Stage):
-    __mapper_args__ = {'polymorphic_identity':'programming'}
-    code_string = Column(String) 
+    __mapper_args__ = {'polymorphic_identity': 'programming'}
+    code_string = Column(String)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def to_dict(self):
+        lesson_data = {
+            "code_string": self.code_string if self.code_string is not None else ""
+        }
+        return {
+            **super().to_dict(),
+            "lesson": lesson_data
+        }
+
 
 class QuizLesson(Stage):
     __mapper_args__ = {'polymorphic_identity': 'quiz'}
-    # Дополнительные поля и связи для викторины
-
     questions = relationship("Question", back_populates="quiz")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def to_dict(self):
+        return super().to_dict()
+
 
 class Question(Base):
     __tablename__ = "questions_questions"
     id = Column(Integer, primary_key=True)
     question_text = Column(String)
-    order = Column(Integer)  # Порядок вопроса в квизе
+    order = Column(Integer)
     quiz_id = Column(Integer, ForeignKey("stage_model.id"))
-    is_true_answer = Column(Boolean)  # Правильный ответ
+    is_true_answer = Column(Boolean)
     quiz = relationship("QuizLesson", back_populates="questions")
 
     def to_dict(self):
         return {
-            "id":self.id,
-            "question_text":self.question_text,
+            "id": self.id,
+            "question_text": self.question_text,
             "order": self.order,
             "is_true_answer": self.is_true_answer
         }

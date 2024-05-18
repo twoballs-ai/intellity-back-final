@@ -286,8 +286,6 @@ def delete_module(module_id: int, db: Session = Depends(get_db)):
         status_code=200,
     )
 
-
-    
 # Маршрут для создания и привязки классического урока к стадии
 @lms_views.post("/add_stage_to_module/classic_lesson/")
 async def create_and_associate_classic_lesson_route(data:lms_schemas.ClassicLesson, db: Session = Depends(get_db)):
@@ -305,26 +303,37 @@ async def create_and_associate_classic_lesson_route(data:lms_schemas.ClassicLess
 async def update_classic_lesson(data:lms_schemas.ClassicLessonUpdate, db: Session = Depends(get_db)):
     # Создание и привязка классического урока к стадии
     try:
-        new_classic_lesson = lms_crud.update_classic_lesson(db, data)
+        classic_lesson = lms_crud.update_classic_lesson(db, data)
         return {"message": "Classic lesson created and associated with stage successfully",
-                "data":new_classic_lesson
+                "data":classic_lesson
                 }
     except Exception as e:
         # Обработка возможных ошибок
         raise HTTPException(status_code=500, detail=str(e))
 
 @lms_views.post("/add_stage_to_module/video_lesson/")
-async def create_and_associate_vdeo_lesson_route(stage_id: int, data:lms_schemas.VideoLesson, db: Session = Depends(get_db)):
+async def create_and_associate_video_lesson_route(data:lms_schemas.VideoLesson, db: Session = Depends(get_db)):
     # Создание и привязка классического урока к стадии
     try:
-        new_video_lesson = lms_crud.create_and_associate_video_lesson(db, stage_id, data)
-        return {"message": "video lesson created and associated with stage successfully",
-                "items":new_video_lesson
+        new_video_lesson = lms_crud.create_and_associate_video_lesson(db, data)
+        return {"message": "Video lesson created and associated with stage successfully",
+                "data":new_video_lesson
                 }
     except Exception as e:
         # Обработка возможных ошибок
         raise HTTPException(status_code=500, detail=str(e))
-        
+
+@lms_views.put("/update/video_lesson/")
+async def update_video_lesson(data:lms_schemas.VideoLessonUpdate, db: Session = Depends(get_db)):
+    # Создание и привязка классического урока к стадии
+    try:
+        video_lesson = lms_crud.update_video_lesson(db, data)
+        return {"message": "Video lesson created and associated with stage successfully",
+                "data":video_lesson
+                }
+    except Exception as e:
+        # Обработка возможных ошибок
+        raise HTTPException(status_code=500, detail=str(e))
 
 @lms_views.post("/add_stage_to_module/quiz_lesson/")
 async def create_quiz(stage_id: int, data:lms_schemas.QuizLesson, db: Session = Depends(get_db)):
