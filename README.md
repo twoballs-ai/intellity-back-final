@@ -195,45 +195,7 @@ Updates the progress of a student in a stage.
 **Response:**
 - Returns the updated stage progress record.
 
-## Installation
 
-1. Clone the repository:
-
-    ```bash
-    git clone https://github.com/yourusername/your-repo.git
-    cd your-repo
-    ```
-
-2. Create and activate a virtual environment:
-
-    ```bash
-    python3 -m venv env
-    source env/bin/activate  # On Windows use `env\Scripts\activate`
-    ```
-
-3. Install the dependencies:
-
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4. Setup the database:
-
-    ```bash
-    # Adjust the database connection string as necessary
-    alembic upgrade head
-    ```
-
-5. Run the FastAPI application:
-
-    ```bash
-    uvicorn main:app --reload
-    ```
-
-## Usage
-
-1. Navigate to `http://127.0.0.1:8000/docs` to access the Swagger UI.
-2. Use the provided endpoints to manage users, courses, and track progress.
 
 ## License
 
