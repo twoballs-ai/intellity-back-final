@@ -17,7 +17,7 @@ from typing import List, Optional
 import asyncio
 from sqlalchemy import and_, func
 from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from ..auth import  get_user_id_by_token
 import json
@@ -26,7 +26,7 @@ import json
 from intellity_back_final.models.course_editor_lms_models import Course, CourseCategory, Module, Stage as StageModel, Question as QuestionModel, QuizLesson as QuizLessonModel
 
 from ..database import SessionLocal
-from ..crud import lms_crud
+from ..crud import teacher_lms_crud
 from ..schemas import lms_schemas
 from ..models.course_editor_lms_models import Chapter as ChapterModel
 lms_views = APIRouter()
@@ -70,7 +70,7 @@ def read_course_categories(skip: int = 0, limit: int = 100, to_select: bool = Fa
         _type_: _description_
     """
     if to_select:
-        categories = lms_crud.get_categoryes(db, skip=skip, limit=limit)
+        categories = teacher_lms_crud.get_categoryes(db, skip=skip, limit=limit)
         categories_select = [category.to_select() for category in categories]
         
         return JSONResponse(
@@ -81,7 +81,7 @@ def read_course_categories(skip: int = 0, limit: int = 100, to_select: bool = Fa
             status_code=200,
         )
     else:
-        categories = lms_crud.get_categoryes(db, skip=skip, limit=limit)
+        categories = teacher_lms_crud.get_categoryes(db, skip=skip, limit=limit)
         categories_data = [
             {
                 "id": category.id,
@@ -101,16 +101,16 @@ def read_course_categories(skip: int = 0, limit: int = 100, to_select: bool = Fa
         )
 @lms_views.post("/category/", response_model=lms_schemas.CourseCategory)
 def create_course_category(category: lms_schemas.CourseCategoryCreate, db: Session = Depends(get_db)):
-    db_category = lms_crud.get_category_by_title(db, title=category.title)
+    db_category = teacher_lms_crud.get_category_by_title(db, title=category.title)
     if db_category:
         raise HTTPException(status_code=400, detail="категория уже существует")
-    return lms_crud.create_category(db=db, category=category)
+    return teacher_lms_crud.create_category(db=db, category=category)
 
 
 @lms_views.get("/courses/")
 def read_courses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     
-    courses = lms_crud.get_courses(db, skip=skip, limit=limit)
+    courses = teacher_lms_crud.get_courses(db, skip=skip, limit=limit)
     
     # categories = [
     #     {
@@ -136,7 +136,7 @@ def read_courses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db))
 @lms_views.get("/course/")
 def read_courses(course_id:int, db: Session = Depends(get_db)):
     
-    course = lms_crud.get_get_course_by_id(db,course_id=course_id,)
+    course = teacher_lms_crud.get_get_course_by_id(db,course_id=course_id,)
     chapters=db.query().filter(ChapterModel.course_id == course_id).all()
     print(chapters)
     data=[]
@@ -163,17 +163,17 @@ def read_courses(course_id:int, db: Session = Depends(get_db)):
 
 @lms_views.post("/course/", response_model=lms_schemas.Course)
 def create_course_category(course: lms_schemas.CourseCreate, user_id: int = Depends(get_user_id_by_token), db: Session = Depends(get_db)):
-    db_course = lms_crud.get_course_by_title(db, title=course.title,)
+    db_course = teacher_lms_crud.get_course_by_title(db, title=course.title,)
     if db_course:
         raise HTTPException(status_code=400, detail="курс уже существует")
-    return lms_crud.create_course(db=db, course=course, user_id=user_id)
+    return teacher_lms_crud.create_course(db=db, course=course, user_id=user_id)
 
 
 
 @lms_views.get("/course-chapter-list/{course_id}")
 def read_chapter(course_id, db: Session = Depends(get_db)):
     
-    chapter = lms_crud.get_course_chapters(db,course_id=course_id)
+    chapter = teacher_lms_crud.get_course_chapters(db,course_id=course_id)
 
     return { "data": chapter}
 
@@ -181,14 +181,14 @@ def read_chapter(course_id, db: Session = Depends(get_db)):
 @lms_views.get("/course-chapter-module-list/{chapter_id}")
 def read_modules(chapter_id, db: Session = Depends(get_db)):
     
-    chapter_modules = lms_crud.get_course_chapter_modules(db,chapter_id=chapter_id)
+    chapter_modules = teacher_lms_crud.get_course_chapter_modules(db,chapter_id=chapter_id)
 
     return { "data": chapter_modules}
 
 @lms_views.get("/course-chapter-module-stage-list/{module_id}")
 def read_stages(module_id, db: Session = Depends(get_db)):
     
-    module_stages = lms_crud.get_course_chapter_module_stages(db,module_id=module_id)
+    module_stages = teacher_lms_crud.get_course_chapter_module_stages(db,module_id=module_id)
     
     return { "data": module_stages}
 
@@ -197,7 +197,7 @@ def read_stages(module_id, db: Session = Depends(get_db)):
 @lms_views.get("/module/")
 def read_module(module_id:int, db: Session = Depends(get_db)):
     
-    module = lms_crud.get_get_module_by_id(db,module_id=module_id)
+    module = teacher_lms_crud.get_get_module_by_id(db,module_id=module_id)
 
     return { "data": module}
 
@@ -291,7 +291,7 @@ def delete_module(module_id: int, db: Session = Depends(get_db)):
 async def create_and_associate_classic_lesson_route(data:lms_schemas.ClassicLesson, db: Session = Depends(get_db)):
     # Создание и привязка классического урока к стадии
     try:
-        new_classic_lesson = lms_crud.create_and_associate_classic_lesson(db, data)
+        new_classic_lesson = teacher_lms_crud.create_and_associate_classic_lesson(db, data)
         return {"message": "Classic lesson created and associated with stage successfully",
                 "data":new_classic_lesson
                 }
@@ -303,7 +303,7 @@ async def create_and_associate_classic_lesson_route(data:lms_schemas.ClassicLess
 async def update_classic_lesson(data:lms_schemas.ClassicLessonUpdate, db: Session = Depends(get_db)):
     # Создание и привязка классического урока к стадии
     try:
-        classic_lesson = lms_crud.update_classic_lesson(db, data)
+        classic_lesson = teacher_lms_crud.update_classic_lesson(db, data)
         return {"message": "Classic lesson created and associated with stage successfully",
                 "data":classic_lesson
                 }
@@ -315,7 +315,7 @@ async def update_classic_lesson(data:lms_schemas.ClassicLessonUpdate, db: Sessio
 async def create_and_associate_video_lesson_route(data:lms_schemas.VideoLesson, db: Session = Depends(get_db)):
     # Создание и привязка классического урока к стадии
     try:
-        new_video_lesson = lms_crud.create_and_associate_video_lesson(db, data)
+        new_video_lesson = teacher_lms_crud.create_and_associate_video_lesson(db, data)
         return {"message": "Video lesson created and associated with stage successfully",
                 "data":new_video_lesson
                 }
@@ -327,7 +327,7 @@ async def create_and_associate_video_lesson_route(data:lms_schemas.VideoLesson, 
 async def update_video_lesson(data:lms_schemas.VideoLessonUpdate, db: Session = Depends(get_db)):
     # Создание и привязка классического урока к стадии
     try:
-        video_lesson = lms_crud.update_video_lesson(db, data)
+        video_lesson = teacher_lms_crud.update_video_lesson(db, data)
         return {"message": "Video lesson created and associated with stage successfully",
                 "data":video_lesson
                 }
@@ -335,16 +335,22 @@ async def update_video_lesson(data:lms_schemas.VideoLessonUpdate, db: Session = 
         # Обработка возможных ошибок
         raise HTTPException(status_code=500, detail=str(e))
 
-@lms_views.post("/add_stage_to_module/quiz_lesson/")
-async def create_quiz(stage_id: int, data:lms_schemas.QuizLesson, db: Session = Depends(get_db)):
+
+@lms_views.post("/add_stage_to_module/quiz-lesson/")
+def create_quiz_lesson(data: lms_schemas.QuizLessonCreate, db: Session = Depends(get_db)):
+    # Создание нового урока типа "Quiz"
+    
     try:
-        new_quiz_lesson = lms_crud.create_and_associate_quiz_lesson(db, stage_id, data)
+        new_quiz_lesson = teacher_lms_crud.create_and_associate_quiz_lesson(db, data)
         return {"message": "quiz lesson created and associated with stage successfully",
-                "items":new_quiz_lesson
+                "data":new_quiz_lesson
                 }
     except Exception as e:
         # Обработка возможных ошибок
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
 
 @lms_views.delete("/delete-stage/")
 def delete_stage(stage_id: int, db: Session = Depends(get_db)):
@@ -365,7 +371,7 @@ def delete_stage(stage_id: int, db: Session = Depends(get_db)):
 @lms_views.get("/stage/{stage_id}")
 def read_stage(stage_id: int, db: Session = Depends(get_db)):
     # Пытаемся получить данные об этапе
-    stage = lms_crud.get_stage(db, stage_id=stage_id)
+    stage = teacher_lms_crud.get_stage(db, stage_id=stage_id)
     # Если этап не найден, вызываем исключение HTTP 404 Not Found
     if stage is None:
         raise HTTPException(status_code=404, detail="Stage not found")
@@ -376,5 +382,5 @@ def read_stage(stage_id: int, db: Session = Depends(get_db)):
 @lms_views.get("/teacher-courses/", response_model=List[lms_schemas.Course])
 def get_teacher_courses(user_id: int = Depends(get_user_id_by_token), skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     # Получение курсов для указанного преподавателя из базы данных, используя идентификатор пользователя
-    courses = lms_crud.get_teacher_courses(db, teacher_id=user_id, skip=skip, limit=limit)
+    courses = teacher_lms_crud.get_teacher_courses(db, teacher_id=user_id, skip=skip, limit=limit)
     return courses
