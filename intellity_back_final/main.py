@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from .routers.lms import lms_views
 from .routers.user import user_views
+from .routers.enrollment_to_course import study_course_views
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import datetime, timedelta
@@ -43,8 +44,12 @@ app.add_middleware(
 
 
 
-app.include_router(lms_views, prefix="/api/v1/lms", tags=["основной функционал lms"], dependencies=[Depends(oauth2_scheme)])
+
 app.include_router(user_views, prefix="/api/v1/user", tags=["основной функционал для работы с пользователями"])
+app.include_router(lms_views, prefix="/api/v1/lms", tags=["основной функционал lms создание курсов"], dependencies=[Depends(oauth2_scheme)])
+app.include_router(study_course_views, prefix="/api/v1/study", tags=["основной функционал lms записи на курс и его прохождения"], dependencies=[Depends(oauth2_scheme)])
+
+
 
 if __name__ == "__main__":
     uvicorn.run("intellity_back_final.main:app", host="0.0.0.0", port=8001, reload=True)

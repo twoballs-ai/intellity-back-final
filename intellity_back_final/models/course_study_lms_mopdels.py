@@ -11,6 +11,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.orm import Session
 
+from intellity_back_final.models.course_editor_lms_models import Chapter, Course, Module, Stage
 from intellity_back_final.models.user_models import Student
 
 # from intellity_back_final.models.course_editor_lms_models import Chapter, Course, Module, Stage
