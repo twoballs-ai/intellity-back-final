@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from datetime import datetime
 from intellity_back_final.crud.student_lms_crud import enroll_student_in_course, update_chapter_progress, update_module_progress, update_stage_progress
-from intellity_back_final.models.course_study_lms_mopdels import CourseEnrollment, ChapterProgress, ModuleProgress, StageProgress
+from intellity_back_final.models.course_study_lms_models import CourseEnrollment, ChapterProgress, ModuleProgress, StageProgress
 from typing import List, Union
 import mimetypes
 from sqlalchemy.exc import IntegrityError
@@ -50,7 +50,14 @@ def enroll_student(student_id: int, course_id: int, db: Session = Depends(get_db
     course = db.query(CourseModel).get(course_id)
     if not student or not course:
         raise HTTPException(status_code=404, detail="Student or Course not found")
-    return enroll_student_in_course(db, student_id, course_id)
+    enroll = enroll_student_in_course(db, student_id, course_id)
+    return JSONResponse(
+        content={
+            "status": True,
+            "data": enroll,
+        },
+        status_code=200,
+    )
 
 @study_course_views.post("/update_chapter/{student_id}/{chapter_id}")
 def update_chapter(student_id: int, chapter_id: int, is_completed: bool, db: Session = Depends(get_db)):

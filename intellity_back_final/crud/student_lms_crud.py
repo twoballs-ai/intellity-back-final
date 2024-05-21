@@ -16,7 +16,7 @@ from typing import List
 
 from sqlalchemy.orm import Session
 from datetime import datetime
-from ..models.course_study_lms_mopdels import CourseEnrollment, ChapterProgress, ModuleProgress, StageProgress
+from ..models.course_study_lms_models import CourseEnrollment, ChapterProgress, ModuleProgress, StageProgress
 
 def enroll_student_in_course(db: Session, student_id: int, course_id: int):
     enrollment = CourseEnrollment(
