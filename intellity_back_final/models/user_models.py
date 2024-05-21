@@ -48,6 +48,8 @@ class Teacher(User):
     qualification = Column(String)
     skills = Column(Text)
 
+    courses_model = relationship("Course", back_populates="teacher_model")
+
     __mapper_args__ = {
         'polymorphic_identity': 'teacher_model',
     }

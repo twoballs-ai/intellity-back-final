@@ -52,6 +52,26 @@ def get_db():
 
 
 @basic_handle_views.get("/recent_courses/")
-def read_recent_courses(db: Session = Depends(get_db)):
-    recent_courses = get_recent_courses(db)
-    return recent_courses
+def read_recent_courses(
+    db: Session = Depends(get_db),
+    items: int = Query(None, title="Number of Items", description="Number of recent courses to retrieve")
+):
+    """Function to retrieve the most recent courses.
+
+    Args:
+        db (Session, optional): The database session. Defaults to Depends(get_db).
+        items (int, optional): The number of recent courses to retrieve. Defaults to None.
+
+    Returns:
+        JSONResponse: The response containing the recent courses.
+    """
+    recent_courses = get_recent_courses(db, items)
+    courses_as_dicts = [course.to_dict() for course in recent_courses]
+
+    return JSONResponse(
+        content={
+            "status": True,
+            "data": courses_as_dicts,
+        },
+        status_code=200,
+    )
