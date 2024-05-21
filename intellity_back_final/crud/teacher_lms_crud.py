@@ -133,8 +133,6 @@ def create_and_associate_video_lesson(db: Session,  data: lms_schemas.VideoLesso
     db.add(video_lesson)
     db.commit()
     db.refresh(video_lesson)
-    print(video_lesson)
-    
     return video_lesson.to_dict()
     
     
@@ -158,30 +156,31 @@ def update_video_lesson(db: Session, data: lms_schemas.VideoLessonUpdate) -> dic
     # Возвращаем обновленный урок в виде словаря
     return video_lesson.to_dict()
 
-def create_and_associate_quiz_lesson(db: Session, stage_id: int, data: dict):
-    print(data)
 
-    # Проверяем, существует ли этап с указанным stage_id
-    stage = db.query(course_editor_lms_models.Stage).filter(course_editor_lms_models.Stage.id == stage_id).first()
-    if not stage:
-        raise HTTPException(status_code=404, detail="Stage not found")
-
-    # Создаем новый квиз
-    quiz = course_editor_lms_models.QuizLesson(name=data.name, descriptions=data.descriptions, stage=stage)
-    db.add(quiz)
+def create_and_associate_quiz_lesson(db: Session,  data: lms_schemas.QuizLessonCreate) -> course_editor_lms_models.QuizLesson:
+    # Создание нового урока типа "Quiz"
+    new_quiz_lesson = course_editor_lms_models.QuizLesson(
+        module_id=data.module_id,
+        title=data.title,
+    )
+    db.add(new_quiz_lesson)
     db.commit()
+    db.refresh(new_quiz_lesson)
 
-    # Создаем вопросы для квиза
-    for question_data in data.questions:
-        question = course_editor_lms_models.Question(question_text=question_data.question_text, 
-                                        order=question_data.order, 
-                                        is_true_answer=question_data.is_true_answer, 
-                                        quiz=quiz)
-        db.add(question)
-
+    # Добавление вопросов к новому уроку
+    for question in data.questions:
+        new_question = course_editor_lms_models.Question(
+            question_text=question.question_text,
+            order=question.order,
+            is_true_answer=question.is_true_answer,
+            quiz_id=new_quiz_lesson.id
+        )
+        db.add(new_question)
+    
     db.commit()
-    return quiz
+    db.refresh(new_quiz_lesson)
 
+    return new_quiz_lesson
 
     
 def get_stage(db: Session, stage_id: int):

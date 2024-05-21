@@ -1,5 +1,5 @@
 from typing import List, Union
-
+from pydantic import conlist, Field
 from pydantic import BaseModel
 from typing import Optional
 
@@ -88,12 +88,13 @@ class VideoLesson(Stage):
 class ProgrammingLesson(Stage):
     pass
 
-class Question(BaseModel):
+
+
+class QuestionCreate(BaseModel):
     question_text: str
     order: int
-    is_true_answer: bool
+    is_true_answer: bool = False
 
+class QuizLessonCreate(Stage):
 
-class QuizLesson(Stage):
-    questions: List[Question]
-
+    questions: List[QuestionCreate] = Field(..., min_items=1, max_items=20)
