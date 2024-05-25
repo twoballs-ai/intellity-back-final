@@ -24,11 +24,15 @@ import json
 
 
 from intellity_back_final.models.course_editor_lms_models import Course, CourseCategory, Module, Stage as StageModel, Question as QuestionModel, QuizLesson as QuizLessonModel
-
+import logging
 from ..database import SessionLocal
 from ..crud import teacher_lms_crud
 from ..schemas import lms_schemas
 from ..models.course_editor_lms_models import Chapter as ChapterModel
+
+
+logger = logging.getLogger(__name__)
+
 lms_views = APIRouter()
 
 
@@ -56,49 +60,7 @@ class AddChapter(BaseModel):
     description: str
     
     
-@lms_views.get("/category/")
-def read_course_categories(skip: int = 0, limit: int = 100, to_select: bool = False, db: Session = Depends(get_db)):
-    """_summary_
 
-    Args:
-        skip (int, optional): _description_. Defaults to 0.
-        limit (int, optional): _description_. Defaults to 100.
-        to_select (bool, optional): _description_. Defaults to False.
-        db (Session, optional): _description_. Defaults to Depends(get_db).
-
-    Returns:
-        _type_: _description_
-    """
-    if to_select:
-        categories = teacher_lms_crud.get_categoryes(db, skip=skip, limit=limit)
-        categories_select = [category.to_select() for category in categories]
-        
-        return JSONResponse(
-            content={
-                "status": True,
-                "data": categories_select,
-            },
-            status_code=200,
-        )
-    else:
-        categories = teacher_lms_crud.get_categoryes(db, skip=skip, limit=limit)
-        categories_data = [
-            {
-                "id": category.id,
-                "title": category.title,
-                "description": category.description,
-                "total_courses": db.query(Course).filter(Course.category == category.id).count()
-            }
-            for category in categories
-        ]
-
-        return JSONResponse(
-            content={
-                "status": True,
-                "data": categories_data,
-            },
-            status_code=200,
-        )
 @lms_views.post("/category/", response_model=lms_schemas.CourseCategory)
 def create_course_category(category: lms_schemas.CourseCategoryCreate, db: Session = Depends(get_db)):
     db_category = teacher_lms_crud.get_category_by_title(db, title=category.title)

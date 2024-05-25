@@ -38,8 +38,12 @@ from ..models.course_editor_lms_models import Chapter as ChapterModel
 from intellity_back_final.models.user_models import Student
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+import logging
 from intellity_back_final.models.course_editor_lms_models import Chapter, Module, Stage
 from intellity_back_final.models.course_study_lms_models import ChapterProgress, ModuleProgress, StageProgress
+
+
+logger = logging.getLogger(__name__)
 
 basic_handle_views = APIRouter()
 
@@ -50,7 +54,34 @@ def get_db():
     finally:
         db.close()
 
+@basic_handle_views.get("/category/")
+def read_course_categories(skip: int = 0, limit: int = 100, to_select: bool = False, db: Session = Depends(get_db)) -> JSONResponse:
+    """
+    Retrieve a list of course categories.
 
+    Args:
+        skip (int, optional): Number of categories to skip. Defaults to 0.
+        limit (int, optional): Maximum number of categories to return. Defaults to 100.
+        to_select (bool, optional): Whether to return a simplified selection. Defaults to False.
+        db (Session, optional): Database session. Defaults to Depends(get_db).
+
+    Returns:
+        JSONResponse: A JSON response containing the status and data.
+    """
+    try:
+        response_data = teacher_lms_crud.get_categoryes(db, skip=skip, limit=limit, to_select=to_select)
+
+        return JSONResponse(
+            content={
+                "status": True,
+                "data": response_data,
+            },
+            status_code=200,
+        )
+    except Exception as e:
+        logger.error(f"Error fetching categories: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+        
 @basic_handle_views.get("/recent_courses/")
 def read_recent_courses(
     db: Session = Depends(get_db),
