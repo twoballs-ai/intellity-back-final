@@ -34,8 +34,8 @@ class CourseEnrollment(Base):
     progress: Mapped[float] = mapped_column(Float, default=0.0)
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    course: Mapped["Course"] = relationship("Course", back_populates="enrollments")
-    student: Mapped["Student"] = relationship("Student", back_populates="enrollments")
+    course_model: Mapped["Course"] = relationship("Course", back_populates="enrollments_model")
+    student_model: Mapped["Student"] = relationship("Student", back_populates="enrollments_model")
 
     def __str__(self):
         return f"{self.student_id}-{self.course_id}"

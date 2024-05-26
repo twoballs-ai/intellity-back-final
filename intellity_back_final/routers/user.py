@@ -34,7 +34,7 @@ import bcrypt
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 import os
-from ..auth import  authenticate_user, create_access_token, create_refresh_token, verify_token
+from ..auth import create_access_token, create_refresh_token, verify_token
 
 from pydantic import BaseModel
 
@@ -43,8 +43,8 @@ from pydantic import BaseModel
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/user/token")
 SECRET_KEY = os.environ.get("SECRET_KEY")
 ALGORITHM = os.environ.get("ALGORITHM")
-ACCESS_TOKEN_EXPIRE_MINUTES = os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES")
-REFRESH_TOKEN_EXPIRE_DAYS = os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", 15))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.environ.get("REFRESH_TOKEN_EXPIRE_DAYS", 7))
 user_views = APIRouter()
 
 
@@ -55,7 +55,11 @@ def get_db():
     finally:
         db.close()
 
-
+def authenticate_user(username: str, password: str, db: Session = Depends(get_db)):
+    user = user_crud.get_user(db, username)
+    if not user or not bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8')):
+        return None
+    return user
 
 
 class UserBase(BaseModel):
@@ -138,38 +142,37 @@ def create_student_view(student: StudentCreate, db: Session = Depends(get_db)):
 
 @user_views.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = authenticate_user(form_data.username, form_data.password,db)
-    print(user)
+    user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
-    print(access_token_expires)
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.id, "type": "access"}, expires_delta=access_token_expires
     )
-    refresh_token_expires = timedelta(minutes=int(REFRESH_TOKEN_EXPIRE_DAYS))
+    refresh_token_expires = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     refresh_token = create_refresh_token(
         data={"sub": user.id, "type": "refresh"}, expires_delta=refresh_token_expires
     )
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "Bearer", "type":user.type}
 
 
-
 # Метод для обновления токена доступа с использованием токена обновления
+
 @user_views.post("/token/refresh")
 async def refresh_access_token(refresh_token: str = Form(...)):
-    verify_token(refresh_token, HTTPException(
+    credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid refresh token",
         headers={"WWW-Authenticate": "Bearer"},
-    ))
+    )
+    verify_token(refresh_token, credentials_exception)
     payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
     username: str = payload.get("sub")
-    access_token_expires = timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": username, "type": "access"}, expires_delta=access_token_expires
     )

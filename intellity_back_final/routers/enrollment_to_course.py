@@ -44,6 +44,22 @@ def get_db():
     finally:
         db.close()
 
+
+@study_course_views.get("/student/courses")
+def get_enrolled_courses(student_id: int = Depends(get_user_id_by_token), db: Session = Depends(get_db)):
+    enrollments = db.query(CourseEnrollment).filter(CourseEnrollment.student_id == student_id).all()
+    if not enrollments:
+        raise HTTPException(status_code=404, detail="Student not found or not enrolled in any courses")
+    courses = [enrollment.course_model.to_dict()  for enrollment in enrollments]
+    return JSONResponse(
+        content={
+            "status": True,
+            "data": courses,
+        },
+        status_code=200,
+    )
+
+
 @study_course_views.post("/enroll/{student_id}/{course_id}")
 def enroll_student(student_id: int, course_id: int, db: Session = Depends(get_db)):
     student = db.query(Student).get(student_id)

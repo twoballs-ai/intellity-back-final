@@ -60,7 +60,7 @@ class Course(Base):
     category_model = relationship("CourseCategory", back_populates="courses_model")
     teacher_model = relationship("Teacher", back_populates="courses_model")
     chapters = relationship("Chapter", back_populates="course", cascade="all, delete-orphan")
-    enrollments = relationship("CourseEnrollment", back_populates="course")
+    enrollments_model = relationship("CourseEnrollment", back_populates="course_model")
 
     def __str__(self):
         return self.title
