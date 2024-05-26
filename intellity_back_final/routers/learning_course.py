@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from datetime import datetime
+from intellity_back_final.crud import student_lms_crud
 from intellity_back_final.crud.student_lms_crud import enroll_student_in_course, update_chapter_progress, update_module_progress, update_stage_progress
 from intellity_back_final.models.course_study_lms_models import CourseEnrollment, ChapterProgress, ModuleProgress, StageProgress
 from typing import List, Union
@@ -86,3 +87,20 @@ def update_module(student_id: int, module_id: int, is_completed: bool, db: Sessi
 @study_course_views.post("/update_stage/{student_id}/{stage_id}")
 def update_stage(student_id: int, stage_id: int, is_completed: bool, db: Session = Depends(get_db)):
     return update_stage_progress(db, student_id, stage_id, is_completed)
+
+
+@study_course_views.get("/stage/{stage_id}")
+def read_stage(stage_id: int, db: Session = Depends(get_db)):
+    # Пытаемся получить данные об этапе
+    stage = student_lms_crud.get_stage(db, stage_id=stage_id)
+    # Если этап не найден, вызываем исключение HTTP 404 Not Found
+    if stage is None:
+        raise HTTPException(status_code=404, detail="Stage not found")
+    # Возвращаем данные об этапе в JSON-формате
+    return JSONResponse(
+        content={
+            "status": True,
+            "data": stage.to_dict(),
+        },
+        status_code=200,
+    )

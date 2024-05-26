@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from .routers.lms import lms_views
 from .routers.user import user_views
-from .routers.enrollment_to_course import study_course_views
+from .routers.learning_course import study_course_views
 from .routers.course_checkers import study_course_checker_views
 from .routers.basic_lms_handlers import basic_handle_views
 
