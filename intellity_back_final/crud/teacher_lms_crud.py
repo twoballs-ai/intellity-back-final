@@ -62,7 +62,7 @@ def create_course(db: Session, course: lms_schemas.CourseCreate, user_id:int):
     db.refresh(db_course)
     return db_course
 
-def get_course_chapters(db: Session, course_id:int, skip: int = 0, limit: int = 100):
+def get_course_chapters(db: Session, course_id: int, skip: int = 0, limit: int = 100):
     chapters = db.query(course_editor_lms_models.Chapter).filter(course_editor_lms_models.Chapter.course_id == course_id).all()
 
     chapters_with_modules = []
@@ -74,8 +74,12 @@ def get_course_chapters(db: Session, course_id:int, skip: int = 0, limit: int = 
             "course_id": chapter.course_id,
             "title": chapter.title,
             "description": chapter.description,
-            "modules": modules,
-            "sort_index":chapter.sort_index,
+            "modules": [module.to_dict() for module in modules],
+            "sort_index": chapter.sort_index,
+            "is_exam": chapter.is_exam,
+            "exam_duration": chapter.exam_duration_minutes,
+            "previous_chapter_id": chapter.previous_chapter_id,
+            "previous_chapter": chapter.previous_chapter.to_dict() if chapter.previous_chapter else None,
         }
         chapters_with_modules.append(chapter_data)
     

@@ -101,10 +101,15 @@ class Chapter(Base):
     def to_dict(self):
         return {
             "id": self.id,
+            "course_id": self.course_id,
             "title": self.title,
             "description": self.description,
-            "modules": self.modules,
-            "sort_index": self.sort_index
+            "modules": [module.to_dict() for module in self.modules],
+            "sort_index": self.sort_index,
+            "is_exam": self.is_exam,
+            "exam_duration_minutes": self.exam_duration_minutes,
+            "previous_chapter_id": self.previous_chapter_id,
+            "previous_chapter": self.previous_chapter.to_dict() if self.previous_chapter else None,
         }
 
     def can_start(self, student):

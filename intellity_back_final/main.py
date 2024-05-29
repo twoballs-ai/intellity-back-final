@@ -7,7 +7,7 @@ from .routers.lms import lms_views
 from .routers.user import user_views
 from .routers.learning_course import study_course_views
 from .routers.course_checkers import study_course_checker_views
-from .routers.basic_lms_handlers import basic_handle_views
+from .routers.basic_lms_routers import basic_handle_views
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
