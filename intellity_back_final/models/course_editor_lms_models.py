@@ -225,13 +225,35 @@ class ProgrammingLesson(Stage):
 class QuizLesson(Stage):
     __mapper_args__ = {'polymorphic_identity': 'quiz'}
     questions = relationship("Question", back_populates="quiz")
+    
+    quiz_type_id = Column(Integer, ForeignKey("quiz_types.id"), nullable=False)
+    quiz_type = relationship("QuizType")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def to_dict(self):
-        return super().to_dict()
+        return {
+            **super().to_dict(),
+            "quiz_type": self.quiz_type.to_dict(),
+            "questions": [question.to_dict() for question in self.questions]
+        }
 
+
+class QuizType(Base):
+    __tablename__ = "quiz_types"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    type_name = Column(String(50), unique=True, nullable=False)
+    description = Column(String(200), nullable=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "type_name": self.type_name,
+            "description": self.description,
+        }
+    
 
 class Question(Base):
     __tablename__ = "questions_questions"
