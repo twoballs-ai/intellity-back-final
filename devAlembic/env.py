@@ -18,7 +18,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 from intellity_back_final.models.course_editor_lms_models import *
 from intellity_back_final.models.user_models import *
-from intellity_back_final.models.course_study_lms_mopdels import *
+from intellity_back_final.models.course_study_lms_models import *
 # target_metadata = mymodel.Base.metadata
 target_metadata = [Base.metadata]
 

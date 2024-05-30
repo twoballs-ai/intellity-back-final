@@ -48,6 +48,8 @@ class Teacher(User):
     qualification = Column(String)
     skills = Column(Text)
 
+    courses_model = relationship("Course", back_populates="teacher_model")
+
     __mapper_args__ = {
         'polymorphic_identity': 'teacher_model',
     }
@@ -61,10 +63,12 @@ class Student(User):
 
     id = Column(Integer, ForeignKey('user_model.id'), primary_key=True)
     interested_categories = Column(Text)
-    enrollments = relationship("CourseEnrollment", back_populates="student")
+
     chapter_progress = relationship("ChapterProgress", back_populates="student")
     module_progress = relationship("ModuleProgress", back_populates="student")
     stage_progress = relationship("StageProgress", back_populates="student")
+    
+    enrollments_model = relationship("CourseEnrollment", back_populates="student_model")
 
     __mapper_args__ = {
         'polymorphic_identity': 'student_model',

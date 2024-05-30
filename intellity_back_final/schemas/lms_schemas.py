@@ -50,8 +50,40 @@ class Chapter(ChapterBase):
 
     class Config:
         orm_mode = True
+
+
+class AddChapter(BaseModel):
+    course_id: int
+    title: str
+    description: str
+    sort_index: Optional[int] = None
+    is_exam: Optional[bool] = False
+    exam_duration_minutes: Optional[int] = None
+    previous_chapter_id: Optional[int] = None
+
+
+class UpdateChapter(BaseModel):
+    title: Optional[str] = Field(None, max_length=30)
+    description: Optional[str] = None
+    sort_index: Optional[int] = None
+    is_exam: Optional[bool] = None
+    exam_duration_minutes: Optional[int] = None
+    previous_chapter_id: Optional[int] = None
+
+
+class AddModule(BaseModel):
+    title: str
+    description: str
+    chapter_id:int
+
  
- 
+
+class UpdateModule(BaseModel):
+    title: str
+    description: str
+
+
+
 class Stage(BaseModel):
     module_id: int
     title: str

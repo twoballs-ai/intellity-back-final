@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
 from datetime import datetime
+from intellity_back_final.crud import student_lms_crud
 from intellity_back_final.crud.student_lms_crud import enroll_student_in_course, update_chapter_progress, update_module_progress, update_stage_progress
-from intellity_back_final.models.course_study_lms_mopdels import CourseEnrollment, ChapterProgress, ModuleProgress, StageProgress
+from intellity_back_final.models.course_study_lms_models import CourseEnrollment, ChapterProgress, ModuleProgress, StageProgress
 from typing import List, Union
 import mimetypes
 from sqlalchemy.exc import IntegrityError
@@ -44,13 +45,36 @@ def get_db():
     finally:
         db.close()
 
+
+@study_course_views.get("/student/courses")
+def get_enrolled_courses(student_id: int = Depends(get_user_id_by_token), db: Session = Depends(get_db)):
+    enrollments = db.query(CourseEnrollment).filter(CourseEnrollment.student_id == student_id).all()
+    if not enrollments:
+        raise HTTPException(status_code=404, detail="Student not found or not enrolled in any courses")
+    courses = [enrollment.course_model.to_dict()  for enrollment in enrollments]
+    return JSONResponse(
+        content={
+            "status": True,
+            "data": courses,
+        },
+        status_code=200,
+    )
+
+
 @study_course_views.post("/enroll/{student_id}/{course_id}")
 def enroll_student(student_id: int, course_id: int, db: Session = Depends(get_db)):
     student = db.query(Student).get(student_id)
     course = db.query(CourseModel).get(course_id)
     if not student or not course:
         raise HTTPException(status_code=404, detail="Student or Course not found")
-    return enroll_student_in_course(db, student_id, course_id)
+    enroll = enroll_student_in_course(db, student_id, course_id)
+    return JSONResponse(
+        content={
+            "status": True,
+            "data": enroll,
+        },
+        status_code=200,
+    )
 
 @study_course_views.post("/update_chapter/{student_id}/{chapter_id}")
 def update_chapter(student_id: int, chapter_id: int, is_completed: bool, db: Session = Depends(get_db)):
@@ -63,3 +87,20 @@ def update_module(student_id: int, module_id: int, is_completed: bool, db: Sessi
 @study_course_views.post("/update_stage/{student_id}/{stage_id}")
 def update_stage(student_id: int, stage_id: int, is_completed: bool, db: Session = Depends(get_db)):
     return update_stage_progress(db, student_id, stage_id, is_completed)
+
+
+@study_course_views.get("/stage/{stage_id}")
+def read_stage(stage_id: int, db: Session = Depends(get_db)):
+    # Пытаемся получить данные об этапе
+    stage = student_lms_crud.get_stage(db, stage_id=stage_id)
+    # Если этап не найден, вызываем исключение HTTP 404 Not Found
+    if stage is None:
+        raise HTTPException(status_code=404, detail="Stage not found")
+    # Возвращаем данные об этапе в JSON-формате
+    return JSONResponse(
+        content={
+            "status": True,
+            "data": stage.to_dict(),
+        },
+        status_code=200,
+    )

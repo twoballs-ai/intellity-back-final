@@ -26,6 +26,9 @@ class CourseCategory(Base):
     title = Column(String(30), unique=True)
     description = Column(Text)
 
+    # Define reverse relationship
+    courses_model = relationship("Course", back_populates="category_model")
+
     def __str__(self):
         return self.title
 
@@ -34,6 +37,7 @@ class CourseCategory(Base):
             "title": self.title,
             "message": self.description,
         }
+
 
     def to_select(self):
         return {
@@ -50,10 +54,13 @@ class Course(Base):
     teacher_id = Column(Integer, ForeignKey("teacher_model.id", ondelete='CASCADE'))
     title = Column(String(30), unique=True)
     description = Column(Text)
-    course_views = Column(BigInteger, default=0)
+    course_views_counter = Column(BigInteger, default=0)
+    subscription_counter = Column(BigInteger, default=0)
 
+    category_model = relationship("CourseCategory", back_populates="courses_model")
+    teacher_model = relationship("Teacher", back_populates="courses_model")
     chapters = relationship("Chapter", back_populates="course", cascade="all, delete-orphan")
-    enrollments = relationship("CourseEnrollment", back_populates="course")
+    enrollments_model = relationship("CourseEnrollment", back_populates="course_model")
 
     def __str__(self):
         return self.title
@@ -63,8 +70,14 @@ class Course(Base):
             "id": self.id,
             "title": self.title,
             "description": self.description,
+            "course_views": self.course_views_counter,
+            "course_subscription": self.subscription_counter,
+            "category": self.category_model.title if self.category else None,
+            "teacher": {
+                "name": self.teacher_model.name if self.teacher_model else None,
+                "lastname": self.teacher_model.lastName if self.teacher_model else None,
+            }
         }
-
 
 class Chapter(Base):
     __tablename__ = "chapter_model"
@@ -88,10 +101,15 @@ class Chapter(Base):
     def to_dict(self):
         return {
             "id": self.id,
+            "course_id": self.course_id,
             "title": self.title,
             "description": self.description,
-            "modules": self.modules,
-            "sort_index": self.sort_index
+            "modules": [module.to_dict() for module in self.modules],
+            "sort_index": self.sort_index,
+            "is_exam": self.is_exam,
+            "exam_duration_minutes": self.exam_duration_minutes,
+            "previous_chapter_id": self.previous_chapter_id,
+            "previous_chapter": self.previous_chapter.to_dict() if self.previous_chapter else None,
         }
 
     def can_start(self, student):

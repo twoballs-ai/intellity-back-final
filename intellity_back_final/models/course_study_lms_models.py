@@ -26,15 +26,16 @@ from sqlalchemy.orm import mapped_column
 
 class CourseEnrollment(Base):
     __tablename__ = "course_enrollment"
-  
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
     course_id: Mapped[int] = mapped_column(ForeignKey("course_model.id"))
     student_id: Mapped[int] = mapped_column(ForeignKey("student_model.id"))
     enrolled_time: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), index=True)
-    progress: Mapped[float] = mapped_column(Float, default=0.0)  # Процент прохождения курса
+    progress: Mapped[float] = mapped_column(Float, default=0.0)
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
-    course: Mapped["Course"] = relationship("Course", back_populates="enrollments")
-    student: Mapped["Student"] = relationship("Student", back_populates="enrollments")
+
+    course_model: Mapped["Course"] = relationship("Course", back_populates="enrollments_model")
+    student_model: Mapped["Student"] = relationship("Student", back_populates="enrollments_model")
 
     def __str__(self):
         return f"{self.student_id}-{self.course_id}"
@@ -55,6 +56,7 @@ class ChapterProgress(Base):
 
     def __str__(self):
         return f"{self.student_id}-{self.chapter_id}"
+    
     
     
 class ModuleProgress(Base):
