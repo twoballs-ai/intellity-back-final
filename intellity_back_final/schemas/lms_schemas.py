@@ -70,7 +70,20 @@ class UpdateChapter(BaseModel):
     exam_duration_minutes: Optional[int] = None
     previous_chapter_id: Optional[int] = None
 
+
+class AddModule(BaseModel):
+    title: str
+    description: str
+    chapter_id:int
+
  
+
+class UpdateModule(BaseModel):
+    title: str
+    description: str
+
+
+
 class Stage(BaseModel):
     module_id: int
     title: str

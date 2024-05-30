@@ -212,7 +212,7 @@ async def add_chapter_to_course(data: lms_schemas.AddChapter, db: Session = Depe
             status_code=500,
         )
 
-@lms_views.put("/update_chapter/{chapter_id}")
+@lms_views.put("/update-chapter/{chapter_id}")
 async def update_chapter(chapter_id: int, data: lms_schemas.UpdateChapter, db: Session = Depends(get_db)):
     try:
         # Получаем главу по ID
@@ -265,10 +265,7 @@ def delete_chapter(chapter_id: int, db: Session = Depends(get_db)):
         status_code=200,
     )
 
-class AddModule(BaseModel):
-    title: str
-    description: str
-    chapter_id:int
+
     
 @lms_views.get("/module/")
 def read_module(module_id:int, db: Session = Depends(get_db)):
@@ -278,7 +275,7 @@ def read_module(module_id:int, db: Session = Depends(get_db)):
     return { "data": module}
 
 @lms_views.post("/add_module_to_chapter/")
-def add_module_to_chapter(data:AddModule, db: Session = Depends(get_db)):
+def add_module_to_chapter(data:lms_schemas.AddModule, db: Session = Depends(get_db)):
     module_create = Module(
             chapter_id=data.chapter_id,
             title=data.title,
@@ -294,6 +291,37 @@ def add_module_to_chapter(data:AddModule, db: Session = Depends(get_db)):
         status_code=200,
     )
     
+@lms_views.put("/update-module/{module_id}")
+async def update_module(module_id: int, data: lms_schemas.UpdateModule, db: Session = Depends(get_db)):
+    try:
+        # Получаем модуль по ID
+        module = db.query(Module).filter(Module.id == module_id).first()
+        print(module)
+        if not module:
+            raise HTTPException(status_code=404, detail="Module not found")
+
+        # Обновляем поля модуля, если они переданы в запросе
+        if data.title is not None:
+            module.title = data.title
+        if data.description is not None:
+            module.description = data.description
+
+        # Сохраняем изменения в базе данных
+        db.commit()
+
+        return JSONResponse(
+            content={
+                "status": True,
+                "data": module.to_dict(),
+            },
+            status_code=200,
+        )
+    except Exception as e:
+        return JSONResponse(
+            content={"status": False, "error": str(e)},
+            status_code=500,
+        )
+
 
 @lms_views.delete("/delete-module/")
 def delete_module(module_id: int, db: Session = Depends(get_db)):
