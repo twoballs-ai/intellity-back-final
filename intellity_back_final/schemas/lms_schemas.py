@@ -129,7 +129,13 @@ class QuizCreate(BaseModel):
     module_id: int
     title: str
 
-class QuestionCreate(BaseModel):
-    question_text: str
-    order: int
+class AnswerCreate(BaseModel):
+    answer_text: str
     is_true_answer: bool
+    order: int
+
+class QuizUpdate(BaseModel):
+    quiz_id: int
+    quiz_type: str
+    question: str
+    answers: List[AnswerCreate]

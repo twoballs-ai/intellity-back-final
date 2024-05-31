@@ -28,7 +28,7 @@ from ..auth import  get_user_id_by_token
 import json
 
 
-from intellity_back_final.models.course_editor_lms_models import Course as CourseModel, CourseCategory, Module, Stage as StageModel, Question as QuestionModel, QuizLesson as QuizLessonModel, Chapter as ChapterModel
+from intellity_back_final.models.course_editor_lms_models import Course as CourseModel, CourseCategory, Module, Stage as StageModel,  QuizLesson as QuizLessonModel, Chapter as ChapterModel
 
 from ..database import SessionLocal
 from ..crud import teacher_lms_crud

@@ -233,32 +233,39 @@ class QuizLesson(Stage):
     __tablename__ = "stage_quiz_lessons_model"
     id = Column(Integer, ForeignKey('stage_model.id'), primary_key=True)
     quiz_type_id = Column(Integer, ForeignKey('quiz_types.id'), nullable=True)
+    question = Column(String)
     quiz_type = relationship('QuizType')
-    questions = relationship("Question", back_populates="quiz", cascade="all, delete-orphan")
+    answers = relationship("Answer", back_populates="quiz", cascade="all, delete-orphan")
     __mapper_args__ = {'polymorphic_identity': 'quiz'}
 
     def to_dict(self):
+        lesson_data = {
+            "question":self.question,
+            "quiz_type": self.quiz_type.name if self.quiz_type else None,
+            "answers": [answer.to_dict() for answer in self.answers]
+        }
         return {
             **super().to_dict(),
-            "quiz_type": self.quiz_type.name if self.quiz_type else None,
-            "questions": [question.to_dict() for question in self.questions]
+            "lesson": lesson_data
         }
 
-class Question(Base):
-    __tablename__ = "quiz_questions_model"
+
+class Answer(Base):
+    __tablename__ = "quiz_answers_model"
     id = Column(Integer, primary_key=True)
-    question_text = Column(String, nullable=False)
+    answer_text = Column(String, nullable=False)
     order = Column(Integer, nullable=False)
     quiz_id = Column(Integer, ForeignKey("stage_quiz_lessons_model.id"), nullable=False)
     is_true_answer = Column(Boolean, nullable=False)
-    quiz = relationship("QuizLesson", back_populates="questions")
+    quiz = relationship("QuizLesson", back_populates="answers")
 
     def to_dict(self):
         return {
             "id": self.id,
-            "question_text": self.question_text,
+            "answer_text": self.answer_text,
             "order": self.order,
-            "is_true_answer": self.is_true_answer
+            "is_true_answer": self.is_true_answer,
+            "quiz_id":self.quiz_id
         }
 # # class StagePass(models.Model):
 # #     stage = models.ForeignKey(Stage, on_delete=models.CASCADE, related_name='stage_stage_pass')

@@ -23,7 +23,7 @@ from ..auth import  get_user_id_by_token
 import json
 
 
-from intellity_back_final.models.course_editor_lms_models import Course, CourseCategory, Module, Stage as StageModel, Question as QuestionModel, QuizLesson as QuizLessonModel
+from intellity_back_final.models.course_editor_lms_models import Course, CourseCategory, Module, Stage as StageModel, Answer as AnswerModel, QuizLesson as QuizLessonModel
 import logging
 from ..database import SessionLocal
 from ..crud import teacher_lms_crud
@@ -379,18 +379,10 @@ def create_quiz_route(quiz: lms_schemas.QuizCreate, db: Session = Depends(get_db
         raise HTTPException(status_code=500, detail=str(e))
 
 @lms_views.put("/update/quiz_lesson/")
-def update_quiz_type_route(quiz_id: int, quiz_type_id: int, db: Session = Depends(get_db)):
+def update_quiz_route(quiz_update: lms_schemas.QuizUpdate, db: Session = Depends(get_db)):
     try:
-        updated_quiz = teacher_lms_crud.update_quiz_type(db=db, quiz_id=quiz_id, quiz_type_id=quiz_type_id)
-        return {"message": "Quiz type updated successfully", "data": updated_quiz}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@lms_views.put("/add_question_to_quiz/{quiz_id}/")
-def add_question_to_quiz_route(quiz_id: int, question: lms_schemas.QuestionCreate, db: Session = Depends(get_db)):
-    try:
-        new_question = teacher_lms_crud.add_question_to_quiz(db=db, quiz_id=quiz_id, question=question)
-        return {"message": "Question added successfully", "data": new_question}
+        updated_quiz = teacher_lms_crud.update_quiz(db=db, quiz_update=quiz_update)
+        return {"message": "Quiz updated successfully", "data": updated_quiz}
     except HTTPException as e:
         raise e
     except Exception as e:
