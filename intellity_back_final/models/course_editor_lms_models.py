@@ -6,6 +6,8 @@ from sqlalchemy import (Boolean
                         , BigInteger
                         , Text
                         , DateTime)
+from sqlalchemy import Enum as SQLAlchemyEnum
+from enum import Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.orm import Session
@@ -150,7 +152,6 @@ class Stage(Base):
     type = Column(String(20))
     module_id = Column(Integer, ForeignKey("module_model.id", ondelete='CASCADE'))
     title = Column(String(30))
-    questions = relationship("Question", back_populates="quiz")
 
     module = relationship("Module", back_populates="stages")
 
@@ -172,11 +173,11 @@ class Stage(Base):
 
 
 class ClassicLesson(Stage):
-    __mapper_args__ = {'polymorphic_identity': 'classic'}
+    __tablename__ = "stage_classic_lessons_model"
+    id = Column(Integer, ForeignKey('stage_model.id'), primary_key=True)
     html_code_text = Column(String)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    __mapper_args__ = {'polymorphic_identity': 'classic'}
 
     def to_dict(self):
         lesson_data = {
@@ -189,11 +190,11 @@ class ClassicLesson(Stage):
 
 
 class VideoLesson(Stage):
-    __mapper_args__ = {'polymorphic_identity': 'video'}
+    __tablename__ = "stage_video_lessons_model"
+    id = Column(Integer, ForeignKey('stage_model.id'), primary_key=True)
     video_link = Column(String)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    __mapper_args__ = {'polymorphic_identity': 'video'}
 
     def to_dict(self):
         lesson_data = {
@@ -206,11 +207,11 @@ class VideoLesson(Stage):
 
 
 class ProgrammingLesson(Stage):
-    __mapper_args__ = {'polymorphic_identity': 'programming'}
+    __tablename__ = "stage_programming_lessons_model"
+    id = Column(Integer, ForeignKey('stage_model.id'), primary_key=True)
     code_string = Column(String)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    __mapper_args__ = {'polymorphic_identity': 'programming'}
 
     def to_dict(self):
         lesson_data = {
@@ -222,24 +223,34 @@ class ProgrammingLesson(Stage):
         }
 
 
-class QuizLesson(Stage):
-    __mapper_args__ = {'polymorphic_identity': 'quiz'}
-    questions = relationship("Question", back_populates="quiz")
+class QuizType(Base):
+    __tablename__ = 'quiz_types'
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String, unique=True, nullable=False)
+
+class QuizLesson(Stage):
+    __tablename__ = "stage_quiz_lessons_model"
+    id = Column(Integer, ForeignKey('stage_model.id'), primary_key=True)
+    quiz_type_id = Column(Integer, ForeignKey('quiz_types.id'), nullable=True)
+    quiz_type = relationship('QuizType')
+    questions = relationship("Question", back_populates="quiz", cascade="all, delete-orphan")
+    __mapper_args__ = {'polymorphic_identity': 'quiz'}
 
     def to_dict(self):
-        return super().to_dict()
-
+        return {
+            **super().to_dict(),
+            "quiz_type": self.quiz_type.name if self.quiz_type else None,
+            "questions": [question.to_dict() for question in self.questions]
+        }
 
 class Question(Base):
-    __tablename__ = "questions_questions"
+    __tablename__ = "quiz_questions_model"
     id = Column(Integer, primary_key=True)
-    question_text = Column(String)
-    order = Column(Integer)
-    quiz_id = Column(Integer, ForeignKey("stage_model.id"))
-    is_true_answer = Column(Boolean)
+    question_text = Column(String, nullable=False)
+    order = Column(Integer, nullable=False)
+    quiz_id = Column(Integer, ForeignKey("stage_quiz_lessons_model.id"), nullable=False)
+    is_true_answer = Column(Boolean, nullable=False)
     quiz = relationship("QuizLesson", back_populates="questions")
 
     def to_dict(self):
@@ -249,8 +260,6 @@ class Question(Base):
             "order": self.order,
             "is_true_answer": self.is_true_answer
         }
-
-
 # # class StagePass(models.Model):
 # #     stage = models.ForeignKey(Stage, on_delete=models.CASCADE, related_name='stage_stage_pass')
 # #     student = models.ForeignKey(Student, on_delete=models.CASCADE,related_name='stage_passed_students')

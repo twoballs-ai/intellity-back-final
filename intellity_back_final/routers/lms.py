@@ -338,96 +338,78 @@ def delete_module(module_id: int, db: Session = Depends(get_db)):
         status_code=200,
     )
 
-# Маршрут для создания и привязки классического урока к стадии
 @lms_views.post("/add_stage_to_module/classic_lesson/")
-async def create_and_associate_classic_lesson_route(data:lms_schemas.ClassicLesson, db: Session = Depends(get_db)):
-    # Создание и привязка классического урока к стадии
+async def create_and_associate_classic_lesson_route(data: lms_schemas.ClassicLesson, db: Session = Depends(get_db)):
     try:
         new_classic_lesson = teacher_lms_crud.create_and_associate_classic_lesson(db, data)
-        return {"message": "Classic lesson created and associated with stage successfully",
-                "data":new_classic_lesson
-                }
+        return {"message": "Classic lesson created and associated with stage successfully", "data": new_classic_lesson}
     except Exception as e:
-        # Обработка возможных ошибок
         raise HTTPException(status_code=500, detail=str(e))
-        
+
 @lms_views.put("/update/classic_lesson/")
-async def update_classic_lesson(data:lms_schemas.ClassicLessonUpdate, db: Session = Depends(get_db)):
-    # Создание и привязка классического урока к стадии
+async def update_classic_lesson(data: lms_schemas.ClassicLessonUpdate, db: Session = Depends(get_db)):
     try:
         classic_lesson = teacher_lms_crud.update_classic_lesson(db, data)
-        return {"message": "Classic lesson created and associated with stage successfully",
-                "data":classic_lesson
-                }
+        return {"message": "Classic lesson updated successfully", "data": classic_lesson}
     except Exception as e:
-        # Обработка возможных ошибок
         raise HTTPException(status_code=500, detail=str(e))
 
 @lms_views.post("/add_stage_to_module/video_lesson/")
-async def create_and_associate_video_lesson_route(data:lms_schemas.VideoLesson, db: Session = Depends(get_db)):
-    # Создание и привязка классического урока к стадии
+async def create_and_associate_video_lesson_route(data: lms_schemas.VideoLesson, db: Session = Depends(get_db)):
     try:
         new_video_lesson = teacher_lms_crud.create_and_associate_video_lesson(db, data)
-        return {"message": "Video lesson created and associated with stage successfully",
-                "data":new_video_lesson
-                }
+        return {"message": "Video lesson created and associated with stage successfully", "data": new_video_lesson}
     except Exception as e:
-        # Обработка возможных ошибок
         raise HTTPException(status_code=500, detail=str(e))
 
 @lms_views.put("/update/video_lesson/")
-async def update_video_lesson(data:lms_schemas.VideoLessonUpdate, db: Session = Depends(get_db)):
-    # Создание и привязка классического урока к стадии
+async def update_video_lesson(data: lms_schemas.VideoLessonUpdate, db: Session = Depends(get_db)):
     try:
         video_lesson = teacher_lms_crud.update_video_lesson(db, data)
-        return {"message": "Video lesson created and associated with stage successfully",
-                "data":video_lesson
-                }
+        return {"message": "Video lesson updated successfully", "data": video_lesson}
     except Exception as e:
-        # Обработка возможных ошибок
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@lms_views.post("/add_stage_to_module/quiz-lesson/")
-def create_quiz_lesson(data: lms_schemas.QuizLessonCreate, db: Session = Depends(get_db)):
-    # Создание нового урока типа "Quiz"
-    
+@lms_views.post("/add_stage_to_module/quiz_lesson/")
+def create_quiz_route(quiz: lms_schemas.QuizCreate, db: Session = Depends(get_db)):
     try:
-        new_quiz_lesson = teacher_lms_crud.create_and_associate_quiz_lesson(db, data)
-        return {"message": "quiz lesson created and associated with stage successfully",
-                "data":new_quiz_lesson
-                }
+        new_quiz = teacher_lms_crud.create_quiz(db=db, quiz=quiz)
+        return {"message": "Quiz created successfully", "data": new_quiz}
     except Exception as e:
-        # Обработка возможных ошибок
         raise HTTPException(status_code=500, detail=str(e))
 
+@lms_views.put("/update/quiz_lesson/")
+def update_quiz_type_route(quiz_id: int, quiz_type_id: int, db: Session = Depends(get_db)):
+    try:
+        updated_quiz = teacher_lms_crud.update_quiz_type(db=db, quiz_id=quiz_id, quiz_type_id=quiz_type_id)
+        return {"message": "Quiz type updated successfully", "data": updated_quiz}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
+@lms_views.put("/add_question_to_quiz/{quiz_id}/")
+def add_question_to_quiz_route(quiz_id: int, question: lms_schemas.QuestionCreate, db: Session = Depends(get_db)):
+    try:
+        new_question = teacher_lms_crud.add_question_to_quiz(db=db, quiz_id=quiz_id, question=question)
+        return {"message": "Question added successfully", "data": new_question}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-@lms_views.delete("/delete-stage/")
+@lms_views.delete("/delete-stage/{stage_id}")
 def delete_stage(stage_id: int, db: Session = Depends(get_db)):
-    module = db.query(StageModel).filter(StageModel.id == stage_id).first()
-    if module is None:
-        raise HTTPException(status_code=404, detail="Chapter not found")
-    db.delete(module)
+    stage = db.query(StageModel).filter(StageModel.id == stage_id).first()
+    if stage is None:
+        raise HTTPException(status_code=404, detail="Stage not found")
+    db.delete(stage)
     db.commit()
-    return JSONResponse(
-        content={
-            "status": True,
-            "text_for_budges":"Удаление урока произошло успешно."
-        },
-        status_code=200,
-    )
-
+    return JSONResponse(content={"status": True, "text_for_budges": "Stage deleted successfully."}, status_code=200)
 
 @lms_views.get("/stage/{stage_id}")
 def read_stage(stage_id: int, db: Session = Depends(get_db)):
-    # Пытаемся получить данные об этапе
-    stage = teacher_lms_crud.get_stage(db, stage_id=stage_id)
-    # Если этап не найден, вызываем исключение HTTP 404 Not Found
+    stage = db.query(StageModel).filter(StageModel.id == stage_id).first()
     if stage is None:
         raise HTTPException(status_code=404, detail="Stage not found")
-    # Возвращаем данные об этапе в JSON-формате
     return stage.to_dict()
 
 

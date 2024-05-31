@@ -1,7 +1,9 @@
 from typing import List, Union
-from pydantic import conlist, Field
-from pydantic import BaseModel
+from pydantic import conlist, Field, field_validator
+from pydantic import BaseModel,  validator
 from typing import Optional
+
+from enum import Enum
 
 class CourseCategoryBase(BaseModel):
     title: str
@@ -76,18 +78,15 @@ class AddModule(BaseModel):
     description: str
     chapter_id:int
 
- 
 
 class UpdateModule(BaseModel):
     title: str
     description: str
 
 
-
 class Stage(BaseModel):
     module_id: int
     title: str
-
 
     class Config:
         orm_mode = True
@@ -117,16 +116,20 @@ class VideoLessonUpdate(BaseModel):
 class VideoLesson(Stage):
     video_link: str
 
+    class Config:
+        orm_mode = True
+
 class ProgrammingLesson(Stage):
-    pass
+    code_string: str
 
+    class Config:
+        orm_mode = True
 
+class QuizCreate(BaseModel):
+    module_id: int
+    title: str
 
 class QuestionCreate(BaseModel):
     question_text: str
     order: int
-    is_true_answer: bool = False
-
-class QuizLessonCreate(Stage):
-
-    questions: List[QuestionCreate] = Field(..., min_items=1, max_items=20)
+    is_true_answer: bool
