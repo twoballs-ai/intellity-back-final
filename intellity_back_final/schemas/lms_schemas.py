@@ -17,23 +17,25 @@ class CourseCategory(CourseCategoryBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class CourseBase(BaseModel):
+    title: str = Field(..., max_length=30)
+    description: Optional[str]
     category: int
-    title: str
-    description: Union[str, None] = None
-
 
 class CourseCreate(CourseBase):
     pass
 
-
 class Course(CourseBase):
     id: int
+    course_views_counter: int
+    subscription_counter: int
+    cover_image_name: Optional[str] = None
+    cover_path: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        orm_mode = True  
 
 
 class ChapterBase(BaseModel):
@@ -51,7 +53,7 @@ class Chapter(ChapterBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class AddChapter(BaseModel):
@@ -89,13 +91,13 @@ class Stage(BaseModel):
     title: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ClassicLesson(Stage):
     html_code_text: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ClassicLessonUpdate(BaseModel):
     stage_id: int
@@ -103,7 +105,7 @@ class ClassicLessonUpdate(BaseModel):
     html_code_text: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class VideoLessonUpdate(BaseModel):
     stage_id: int
@@ -111,19 +113,19 @@ class VideoLessonUpdate(BaseModel):
     video_link: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class VideoLesson(Stage):
     video_link: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ProgrammingLesson(Stage):
     code_string: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class QuizCreate(BaseModel):
     module_id: int

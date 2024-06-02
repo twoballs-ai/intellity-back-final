@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from datetime import datetime
 from intellity_back_final.crud import student_lms_crud
-from intellity_back_final.crud.student_lms_crud import enroll_student_in_course, update_chapter_progress, update_module_progress, update_stage_progress
+from intellity_back_final.crud.student_lms_crud import enroll_student_in_course, get_course_enrollment, update_chapter_progress, update_module_progress, update_stage_progress
 from intellity_back_final.models.course_study_lms_models import CourseEnrollment, ChapterProgress, ModuleProgress, StageProgress
 from typing import List, Union
 import mimetypes
@@ -24,7 +24,8 @@ from sqlalchemy import and_, func
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from ..auth import  get_user_id_by_token
+
+from intellity_back_final.routers.user import get_current_user
 import json
 
 
@@ -34,7 +35,7 @@ from ..database import SessionLocal
 from ..crud import teacher_lms_crud
 from ..schemas import lms_schemas
 from ..models.course_editor_lms_models import Chapter as ChapterModel
-from intellity_back_final.models.user_models import Student
+from intellity_back_final.models.user_models import Student, User
 study_course_views = APIRouter()
 
 
@@ -47,8 +48,8 @@ def get_db():
 
 
 @study_course_views.get("/student/courses")
-def get_enrolled_courses(student_id: int = Depends(get_user_id_by_token), db: Session = Depends(get_db)):
-    enrollments = db.query(CourseEnrollment).filter(CourseEnrollment.student_id == student_id).all()
+def get_enrolled_courses(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    enrollments = db.query(CourseEnrollment).filter(CourseEnrollment.student_id == current_user.id).all()
     if not enrollments:
         raise HTTPException(status_code=404, detail="Student not found or not enrolled in any courses")
     courses = [enrollment.course_model.to_dict()  for enrollment in enrollments]
@@ -61,17 +62,28 @@ def get_enrolled_courses(student_id: int = Depends(get_user_id_by_token), db: Se
     )
 
 
-@study_course_views.post("/enroll/{student_id}/{course_id}")
-def enroll_student(student_id: int, course_id: int, db: Session = Depends(get_db)):
-    student = db.query(Student).get(student_id)
+@study_course_views.post("/enroll/{course_id}")
+def enroll_student(course_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    student = db.query(Student).get(current_user.id)
     course = db.query(CourseModel).get(course_id)
     if not student or not course:
         raise HTTPException(status_code=404, detail="Student or Course not found")
-    enroll = enroll_student_in_course(db, student_id, course_id)
+    
+    enrollment = get_course_enrollment(db, student.id, course_id)
+    if enrollment:
+        return JSONResponse(
+            content={
+                "status": False,
+                "data": "Student is already enrolled in this course"
+            },
+            status_code=400,
+        )
+
+    enroll = enroll_student_in_course(db, student.id, course_id)
     return JSONResponse(
         content={
             "status": True,
-            "data": enroll,
+            "data": enroll.to_dict(),
         },
         status_code=200,
     )

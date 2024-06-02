@@ -7,12 +7,6 @@ from ..models import course_editor_lms_models
 from ..schemas import lms_schemas
 from typing import List
 
-# def get_user(db: Session, user_id: int):
-#     return db.query(models.User).filter(models.User.id == user_id).first()
-
-
-# def get_user_by_email(db: Session, email: str):
-#     return db.query(models.User).filter(models.User.email == email).first()
 
 def get_category(db: Session, category_id: int):
     return db.query(course_editor_lms_models.CourseCategory).filter(course_editor_lms_models.CourseCategory.id == category_id).first()
@@ -55,8 +49,15 @@ def get_course_by_title(db: Session, title: str):
 def get_get_course_by_id(db: Session, course_id: int):
     return db.query(course_editor_lms_models.Course).filter_by(id = course_id).first()
 
-def create_course(db: Session, course: lms_schemas.CourseCreate, user_id:int):
-    db_course = course_editor_lms_models.Course(teacher_id=user_id, category=course.category, title=course.title, description=course.description)
+def create_course(db: Session, course: lms_schemas.CourseCreate, user_id: int, cover_image_name: str, cover_path: str):
+    db_course = course_editor_lms_models.Course(
+        teacher_id=user_id,
+        category=course.category,
+        title=course.title,
+        description=course.description,
+        cover_image_name=cover_image_name,
+        cover_path=cover_path
+    )
     db.add(db_course)
     db.commit()
     db.refresh(db_course)

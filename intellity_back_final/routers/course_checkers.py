@@ -24,7 +24,7 @@ from sqlalchemy import and_, func
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from ..auth import  get_user_id_by_token
+
 import json
 
 

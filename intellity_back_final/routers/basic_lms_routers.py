@@ -25,7 +25,7 @@ from sqlalchemy import and_, func
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from ..auth import  get_user_id_by_token
+
 import json
 
 
@@ -82,6 +82,26 @@ def read_course_categories(skip: int = 0, limit: int = 100, to_select: bool = Fa
         logger.error(f"Error fetching categories: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
         
+
+@basic_handle_views.get("/course/")
+def read_course(course_id: int, db: Session = Depends(get_db)):
+    course = db.query(CourseModel).filter(CourseModel.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    chapters = db.query(ChapterModel).filter(ChapterModel.course_id == course_id).all()
+    
+    course_data = course.to_dict()
+    course_data["chapters"] = [{"title": chapter.title, "description": chapter.description} for chapter in chapters]
+    
+    return JSONResponse(
+        content={
+            "status": True,
+            "data": course_data,
+        },
+        status_code=200,
+    )
+
 @basic_handle_views.get("/recent_courses/")
 def read_recent_courses(
     db: Session = Depends(get_db),

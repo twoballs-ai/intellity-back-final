@@ -15,11 +15,12 @@ from datetime import datetime, timedelta
 from typing import Optional
 import jwt
 import bcrypt
-
+from fastapi.staticfiles import StaticFiles
+from .auth import oauth2_scheme
 
 app = FastAPI()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/user/token")
+
 
 @app.get("/")
 def docs():
@@ -38,7 +39,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+app.mount("/uploaded_directory", StaticFiles(directory="uploaded_directory"), name="uploaded_directory")
 
 
 

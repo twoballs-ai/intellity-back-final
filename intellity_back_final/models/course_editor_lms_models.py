@@ -58,7 +58,8 @@ class Course(Base):
     description = Column(Text)
     course_views_counter = Column(BigInteger, default=0)
     subscription_counter = Column(BigInteger, default=0)
-
+    cover_image_name = Column(String, index=True)
+    cover_path = Column(String, unique=True, nullable=True)
     category_model = relationship("CourseCategory", back_populates="courses_model")
     teacher_model = relationship("Teacher", back_populates="courses_model")
     chapters = relationship("Chapter", back_populates="course", cascade="all, delete-orphan")
@@ -74,10 +75,13 @@ class Course(Base):
             "description": self.description,
             "course_views": self.course_views_counter,
             "course_subscription": self.subscription_counter,
+            "cover_image_name": self.cover_image_name,
+            "cover_path": self.cover_path,
             "category": self.category_model.title if self.category else None,
             "teacher": {
                 "name": self.teacher_model.name if self.teacher_model else None,
                 "lastname": self.teacher_model.lastName if self.teacher_model else None,
+                "id": self.teacher_id if self.teacher_id else None,
             }
         }
 

@@ -19,17 +19,22 @@ from sqlalchemy import and_, func
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from ..auth import  get_user_id_by_token
+
 import json
 
 
 from intellity_back_final.models.course_editor_lms_models import Course, CourseCategory, Module, Stage as StageModel, Answer as AnswerModel, QuizLesson as QuizLessonModel
 import logging
+
+from intellity_back_final.models.user_models import User
+from intellity_back_final.routers.user import get_current_user
 from ..database import SessionLocal
 from ..crud import teacher_lms_crud
 from ..schemas import lms_schemas
 from ..models.course_editor_lms_models import Chapter as ChapterModel
-
+import os
+import shutil
+from PIL import Image as PILImage
 
 logger = logging.getLogger(__name__)
 
@@ -43,15 +48,10 @@ def get_db():
     finally:
         db.close()
 
-# pydantic:
+UPLOAD_DIRECTORY = "uploaded_directory"
 
-# class SuggData(BaseModel):
-#     # date: datetime
-#     reason: int
-#     author: str
-#     receiver_depart: int
-#     message: str
-#     is_hidden: bool
+if not os.path.exists(UPLOAD_DIRECTORY):
+    os.makedirs(UPLOAD_DIRECTORY)
 
 
 
@@ -118,14 +118,61 @@ def read_courses(course_id:int, db: Session = Depends(get_db)):
     )
 
 
-
 @lms_views.post("/course/", response_model=lms_schemas.Course)
-def create_course_category(course: lms_schemas.CourseCreate, user_id: int = Depends(get_user_id_by_token), db: Session = Depends(get_db)):
-    db_course = teacher_lms_crud.get_course_by_title(db, title=course.title,)
-    if db_course:
-        raise HTTPException(status_code=400, detail="курс уже существует")
-    return teacher_lms_crud.create_course(db=db, course=course, user_id=user_id)
+def create_course_category(
+    title: str = Form(..., max_length=30), 
+    description: str = Form(None), 
+    category: int = Form(...), 
+    current_user: User = Depends(get_current_user), 
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    if file.content_type not in ["image/jpeg", "image/png"]:
+        raise HTTPException(status_code=400, detail="Invalid file type. Only JPEG and PNG files are allowed.")
 
+    # Verify the image
+    try:
+        with PILImage.open(file.file) as img:
+            img.verify()
+            file.file.seek(0)  # Reset file pointer to beginning after verify
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image file.")
+
+    search_course = teacher_lms_crud.get_course_by_title(db, title=title)
+    if search_course:
+        raise HTTPException(status_code=400, detail="Course already exists")
+
+    course_create = teacher_lms_crud.create_course(
+        db=db, 
+        course=lms_schemas.CourseCreate(title=title, description=description, category=category), 
+        user_id=current_user, 
+        cover_image_name=file.filename, 
+        cover_path=""
+    )
+    if not course_create:
+        raise HTTPException(status_code=404, detail="Course not found")
+    
+    course_id = course_create.id
+    course_title = course_create.title
+    course_directory_name = f"{course_id}_{course_title.replace(' ', '_')}"
+    course_directory_path = os.path.join(UPLOAD_DIRECTORY, course_directory_name)
+    covers_directory_path = os.path.join(course_directory_path, "covers")
+    media_directory_path = os.path.join(course_directory_path, "media")
+
+    os.makedirs(covers_directory_path, exist_ok=True)
+    os.makedirs(media_directory_path, exist_ok=True)
+
+    file_location = os.path.join(covers_directory_path, file.filename)
+
+    with open(file_location, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Update course with correct cover path
+    course_create.cover_path = file_location
+    db.commit()
+    db.refresh(course_create)
+
+    return course_create
 
 
 @lms_views.get("/course-chapter-list/{course_id}")
@@ -406,7 +453,8 @@ def read_stage(stage_id: int, db: Session = Depends(get_db)):
 
 
 @lms_views.get("/teacher-courses/", response_model=List[lms_schemas.Course])
-def get_teacher_courses(user_id: int = Depends(get_user_id_by_token), skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def get_teacher_courses(current_user: User = Depends(get_current_user),  skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     # Получение курсов для указанного преподавателя из базы данных, используя идентификатор пользователя
-    courses = teacher_lms_crud.get_teacher_courses(db, teacher_id=user_id, skip=skip, limit=limit)
+
+    courses = teacher_lms_crud.get_teacher_courses(db, teacher_id=current_user.id, skip=skip, limit=limit)
     return courses
