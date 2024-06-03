@@ -137,7 +137,11 @@ class AnswerCreate(BaseModel):
     order: int
 
 class QuizUpdate(BaseModel):
-    quiz_id: int
+    stage_id: int
+    title: str
     quiz_type: str
     question: str
     answers: List[AnswerCreate]
+
+    class Config:
+        from_attributes = True

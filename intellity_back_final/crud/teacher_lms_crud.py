@@ -159,34 +159,77 @@ def create_quiz(db: Session, quiz: lms_schemas.QuizCreate):
     return db_quiz.to_dict()
 
 
-def update_quiz(db: Session, quiz_update: lms_schemas.QuizUpdate):
+# def update_quiz(db: Session, quiz_update: lms_schemas.QuizUpdate):
+#     # Получение quiz по его id
+#     quiz = db.query(course_editor_lms_models.QuizLesson).filter(course_editor_lms_models.QuizLesson.id == quiz_update.quiz_id).first()
+#     if not quiz:
+#         raise HTTPException(status_code=404, detail="Quiz not found")
+
+#     # Получение quiz_type_id на основе quiz_type
+#     quiz_type = db.query(course_editor_lms_models.QuizType).filter(course_editor_lms_models.QuizType.name == quiz_update.quiz_type).first()
+#     if not quiz_type:
+#         raise HTTPException(status_code=404, detail="Quiz type not found")
+
+#     # Обновление полей quiz
+#     quiz.quiz_type_id = quiz_type.id
+#     quiz.question = quiz_update.question
+
+#     # Проверка на тип "radio" и количество правильных ответов
+#     if quiz_type.name == "radio":
+#         true_answers_count = sum(1 for q in quiz_update.answers if q.is_true_answer)
+#         if true_answers_count > 1:
+#             raise HTTPException(status_code=400, detail="For 'radio' type quiz, only one answer can be true")
+
+#     # Удаление существующих ответов
+#     db.query(course_editor_lms_models.Answer).filter(course_editor_lms_models.Answer.quiz_id == quiz.id).delete()
+
+#     # Добавление новых ответов с порядком из frontend
+#     for answer_data in quiz_update.answers:
+#         answer = course_editor_lms_models.Answer(
+#             quiz_id=quiz.id,
+#             answer_text=answer_data.answer_text,
+#             order=answer_data.order,
+#             is_true_answer=answer_data.is_true_answer
+#         )
+#         db.add(answer)
+    
+#     db.commit()
+#     db.refresh(quiz)
+#     return quiz.to_dict()
+def update_quiz(db: Session, data: lms_schemas.QuizUpdate):
     # Получение quiz по его id
-    quiz = db.query(course_editor_lms_models.QuizLesson).filter(course_editor_lms_models.QuizLesson.id == quiz_update.quiz_id).first()
-    if not quiz:
+    quiz_lesson = db.query(course_editor_lms_models.QuizLesson).filter_by(id=data.stage_id).first()
+
+
+    if not quiz_lesson:
         raise HTTPException(status_code=404, detail="Quiz not found")
 
     # Получение quiz_type_id на основе quiz_type
-    quiz_type = db.query(course_editor_lms_models.QuizType).filter(course_editor_lms_models.QuizType.name == quiz_update.quiz_type).first()
+    quiz_type = db.query(course_editor_lms_models.QuizType).filter(course_editor_lms_models.QuizType.name == data.quiz_type).first()
     if not quiz_type:
         raise HTTPException(status_code=404, detail="Quiz type not found")
 
     # Обновление полей quiz
-    quiz.quiz_type_id = quiz_type.id
-    quiz.question = quiz_update.question
+    if data.title:
+        quiz_lesson.title = data.title
 
+    quiz_lesson.quiz_type_id = quiz_type.id
+    if data.question:
+        quiz_lesson.question = data.question
+    
     # Проверка на тип "radio" и количество правильных ответов
     if quiz_type.name == "radio":
-        true_answers_count = sum(1 for q in quiz_update.answers if q.is_true_answer)
+        true_answers_count = sum(1 for q in data.answers if q.is_true_answer)
         if true_answers_count > 1:
             raise HTTPException(status_code=400, detail="For 'radio' type quiz, only one answer can be true")
 
     # Удаление существующих ответов
-    db.query(course_editor_lms_models.Answer).filter(course_editor_lms_models.Answer.quiz_id == quiz.id).delete()
+    db.query(course_editor_lms_models.Answer).filter(course_editor_lms_models.Answer.quiz_id == quiz_lesson.id).delete()
 
     # Добавление новых ответов с порядком из frontend
-    for answer_data in quiz_update.answers:
+    for answer_data in data.answers:
         answer = course_editor_lms_models.Answer(
-            quiz_id=quiz.id,
+            quiz_id=quiz_lesson.id,
             answer_text=answer_data.answer_text,
             order=answer_data.order,
             is_true_answer=answer_data.is_true_answer
@@ -194,8 +237,8 @@ def update_quiz(db: Session, quiz_update: lms_schemas.QuizUpdate):
         db.add(answer)
     
     db.commit()
-    db.refresh(quiz)
-    return quiz.to_dict()
+    db.refresh(quiz_lesson)
+    return quiz_lesson.to_dict()
 
 def get_stage(db: Session, stage_id: int):
     return db.query(course_editor_lms_models.Stage).filter(course_editor_lms_models.Stage.id == stage_id).first()
