@@ -59,6 +59,9 @@ class Course(Base):
     course_views_counter = Column(BigInteger, default=0)
     subscription_counter = Column(BigInteger, default=0)
     cover_image_name = Column(String, index=True)
+    total_chapters = Column(BigInteger, default=0)
+    total_modules = Column(BigInteger, default=0)
+    total_stages = Column(BigInteger, default=0)
     cover_path = Column(String, unique=True, nullable=True)
     category_model = relationship("CourseCategory", back_populates="courses_model")
     teacher_model = relationship("Teacher", back_populates="courses_model")
@@ -75,6 +78,9 @@ class Course(Base):
             "description": self.description,
             "course_views": self.course_views_counter,
             "course_subscription": self.subscription_counter,
+            "total_chapters": self.total_chapters,
+            "total_modules": self.total_modules,
+            "total_stages": self.total_stages,
             "cover_image_name": self.cover_image_name,
             "cover_path": self.cover_path,
             "category": self.category_model.title if self.category else None,
@@ -93,6 +99,8 @@ class Chapter(Base):
     title = Column(String(30))
     description = Column(Text)
     sort_index = Column(Integer, default=1)
+    total_modules_in_chapter = Column(BigInteger, default=0)
+    total_stages_in_chapter = Column(BigInteger, default=0)
     is_exam = Column(Boolean, default=False)
     exam_duration_minutes = Column(Integer)
     previous_chapter_id = Column(Integer, ForeignKey("chapter_model.id"))
@@ -112,6 +120,8 @@ class Chapter(Base):
             "description": self.description,
             "modules": [module.to_dict() for module in self.modules],
             "sort_index": self.sort_index,
+            "total_modules_in_chapter": self.total_modules_in_chapter, 
+            "total_stages_in_chapter": self.total_stages_in_chapter, 
             "is_exam": self.is_exam,
             "exam_duration_minutes": self.exam_duration_minutes,
             "previous_chapter_id": self.previous_chapter_id,
@@ -133,7 +143,7 @@ class Module(Base):
     chapter_id = Column(Integer, ForeignKey("chapter_model.id", ondelete='CASCADE'))
     title = Column(String(30))
     description = Column(Text)
-
+    total_stages_in_module = Column(BigInteger, default=0)
     chapter = relationship("Chapter", back_populates="modules")
     stages = relationship("Stage", back_populates="module", cascade="all, delete-orphan")
 
@@ -145,7 +155,8 @@ class Module(Base):
             "id": self.id,
             "chapter_id": self.chapter_id,
             "title": self.title,
-            "description": self.description
+            "description": self.description,
+            "total_stages_in_module": self.total_stages_in_module,
         }
 
 
