@@ -284,8 +284,9 @@ async def add_chapter_to_course(data: lms_schemas.AddChapter, current_user: User
         return JSONResponse(
             content={
                 "status": True,
-                "chapter": chapter_create.to_dict(),
-                "chapter_count": chapter_count + 1  # Возвращаем количество глав, увеличенное на один
+                "data": chapter_create.to_dict(),
+                "chapter_count": chapter_count + 1,  # Возвращаем количество глав, увеличенное на один
+                "message":"Глава добавлена"
             },
             status_code=200,
         )
@@ -333,7 +334,8 @@ async def update_chapter(chapter_id: int, data: lms_schemas.UpdateChapter, curre
         return JSONResponse(
             content={
                 "status": True,
-                "chapter": chapter.to_dict(),
+                "data": chapter.to_dict(),
+                "message":"Глава обновлена"
             },
             status_code=200,
         )
@@ -378,7 +380,7 @@ async def delete_chapter(chapter_id: int, current_user: User = Depends(get_curre
         # Сохраняем изменения в базе данных
         db.commit()
 
-        return JSONResponse(content={"status": True, "text_for_budges": "Удаление главы произошло успешно."}, status_code=200)
+        return JSONResponse(content={"status": True, "message": "Удаление главы произошло успешно."}, status_code=200)
     except Exception as e:
         return JSONResponse(
             content={"status": False, "error": str(e)},
@@ -415,6 +417,7 @@ def add_module_to_chapter(data: lms_schemas.AddModule, current_user: User = Depe
         module_create = Module(
             chapter_id=data.chapter_id,
             title=data.title,
+            sort_index=data.sort_index,
             description=data.description
         )
         db.add(module_create)
@@ -429,7 +432,8 @@ def add_module_to_chapter(data: lms_schemas.AddModule, current_user: User = Depe
         return JSONResponse(
             content={
                 "status": True,
-                "module": module_create.to_dict(),
+                "data": module_create.to_dict(),
+                "message":"Вы успешно добавили модуль"
             },
             status_code=200,
         )
@@ -464,6 +468,8 @@ async def update_module(module_id: int, data: lms_schemas.UpdateModule, current_
         # Обновляем поля модуля, если они переданы в запросе
         if data.title is not None:
             module.title = data.title
+        if data.sort_index is not None:
+            module.sort_index = data.sort_index
         if data.description is not None:
             module.description = data.description
 
@@ -474,6 +480,7 @@ async def update_module(module_id: int, data: lms_schemas.UpdateModule, current_
             content={
                 "status": True,
                 "data": module.to_dict(),
+                "message":"Вы успешно обновили модуль"
             },
             status_code=200,
         )
@@ -523,7 +530,7 @@ def delete_module(module_id: int, current_user: User = Depends(get_current_user)
         return JSONResponse(
             content={
                 "status": True,
-                "text_for_budges":"Удаление модуля произошло успешно."
+                "message":"Удаление модуля произошло успешно."
             },
             status_code=200,
         )

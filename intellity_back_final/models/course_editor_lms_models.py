@@ -143,6 +143,7 @@ class Module(Base):
     chapter_id = Column(Integer, ForeignKey("chapter_model.id", ondelete='CASCADE'))
     title = Column(String(30))
     description = Column(Text)
+    sort_index = Column(Integer, default=1)
     total_stages_in_module = Column(BigInteger, default=0)
     chapter = relationship("Chapter", back_populates="modules")
     stages = relationship("Stage", back_populates="module", cascade="all, delete-orphan")
@@ -156,6 +157,7 @@ class Module(Base):
             "chapter_id": self.chapter_id,
             "title": self.title,
             "description": self.description,
+            "sort_index":self.sort_index,
             "total_stages_in_module": self.total_stages_in_module,
         }
 
