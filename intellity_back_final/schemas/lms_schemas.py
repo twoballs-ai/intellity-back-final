@@ -87,6 +87,8 @@ class UpdateModule(BaseModel):
     description: str
     sort_index: Optional[int] = None
 
+class PatchModule(BaseModel):
+    sort_index: Optional[int] = None
 
 class Stage(BaseModel):
     module_id: int

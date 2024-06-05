@@ -34,7 +34,7 @@ from intellity_back_final.models.course_editor_lms_models import Course as Cours
 from ..database import SessionLocal
 from ..crud import teacher_lms_crud
 from ..schemas import lms_schemas
-from ..models.course_editor_lms_models import Chapter as ChapterModel
+from ..models.course_editor_lms_models import Chapter as ChapterModel, QuizLesson
 from intellity_back_final.models.user_models import Student, User
 study_course_views = APIRouter()
 
@@ -60,6 +60,27 @@ def get_enrolled_courses(current_user: User = Depends(get_current_user), db: Ses
         },
         status_code=200,
     )
+
+
+@study_course_views.get("/check-enrollment/")
+def check_enrollment(course_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    student_id = current_user.id  # Извлечение student_id из текущего пользователя
+    enrollment = db.query(CourseEnrollment).filter_by(course_id=course_id, student_id=student_id).first()
+    
+    if enrollment:
+        return JSONResponse(
+            content={
+                "status": "True",
+                "data": enrollment.to_dict(),
+                "enrolled_status":"enrolled"
+            },
+            status_code=200,
+        )
+
+    else:
+        raise HTTPException(status_code=404, detail="Enrollment not found")
+
+
 
 
 @study_course_views.post("/enroll/{course_id}")
@@ -102,17 +123,37 @@ def update_stage(student_id: int, stage_id: int, is_completed: bool, db: Session
 
 
 @study_course_views.get("/stage/{stage_id}")
-def read_stage(stage_id: int, db: Session = Depends(get_db)):
-    # Пытаемся получить данные об этапе
-    stage = student_lms_crud.get_stage(db, stage_id=stage_id)
-    # Если этап не найден, вызываем исключение HTTP 404 Not Found
+def read_stage(stage_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Retrieve the stage
+    stage = student_lms_crud.get_stage_for_student(db, stage_id=stage_id)
+    
     if stage is None:
         raise HTTPException(status_code=404, detail="Stage not found")
-    # Возвращаем данные об этапе в JSON-формате
+    
+    # Retrieve the course ID
+    course_id = None
+    if stage.module:
+        course_id = stage.module.chapter.course_id
+    # Verify if the student is enrolled in the course corresponding to the stage
+    course_enrollment = db.query(CourseEnrollment).filter(
+        CourseEnrollment.course_id == course_id,
+        CourseEnrollment.student_id == current_user.id
+    ).first()
+    
+    if not course_enrollment:
+        raise HTTPException(status_code=403, detail="You are not enrolled in this course")
+    
+    # Format the data based on the stage type
+    if isinstance(stage, QuizLesson):
+        stage_data = stage.to_learn_dict()
+    else:
+        stage_data = stage.to_dict()
+    
+    # Return the formatted data as a JSON response
     return JSONResponse(
         content={
             "status": True,
-            "data": stage.to_dict(),
+            "data": stage_data,
         },
         status_code=200,
     )

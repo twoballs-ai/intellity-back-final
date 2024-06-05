@@ -266,6 +266,16 @@ class QuizLesson(Stage):
             "lesson": lesson_data
         }
 
+    def to_learn_dict(self):
+        lesson_data = {
+            "question":self.question,
+            "quiz_type": self.quiz_type.name if self.quiz_type else None,
+            "answers": [answer.to_learn_dict() for answer in self.answers]
+        }
+        return {
+            **super().to_dict(),
+            "lesson": lesson_data
+        }
 
 class Answer(Base):
     __tablename__ = "quiz_answers_model"
@@ -282,6 +292,14 @@ class Answer(Base):
             "answer_text": self.answer_text,
             "order": self.order,
             "is_true_answer": self.is_true_answer,
+            "quiz_id":self.quiz_id
+        }
+    
+    def to_learn_dict(self):
+        return {
+            "id": self.id,
+            "answer_text": self.answer_text,
+            "order": self.order,
             "quiz_id":self.quiz_id
         }
 # # class StagePass(models.Model):

@@ -86,6 +86,5 @@ def update_stage_progress(db: Session, student_id: int, stage_id: int, is_comple
     db.refresh(progress)
     return progress
 
-def get_stage(db: Session, stage_id: int):
+def get_stage_for_student(db: Session, stage_id: int):
     return db.query(course_editor_lms_models.Stage).filter(course_editor_lms_models.Stage.id == stage_id).first()
-
