@@ -28,7 +28,9 @@ def create_student(db: Session, email: str, password: str, interested_categories
     db.refresh(db_student)
     return db_student
 
-def get_user(db: Session, username: str):
-    user = db.query(user_models.User).filter(user_models.User.email == username).first()
-    print(user)
-    return user
+def get_user(db: Session, user_id: int):
+    return db.query(user_models.User).filter(user_models.User.id == user_id).first()
+
+
+def get_user_by_email(db: Session, email: str):
+    return db.query(user_models.User).filter(user_models.User.email == email).first()

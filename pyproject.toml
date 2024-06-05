@@ -2,7 +2,7 @@
 name = "intellity-back-final"
 version = "0.1.0"
 description = ""
-authors = ["John Doe <johndoe@email.com>"]
+authors = ["Борис Богатырев <johndoe@email.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
@@ -16,6 +16,7 @@ fastapi-users = {extras = ["sqlalchemy"], version = "^13.0.0"}
 asyncpg = "^0.29.0"
 pyjwt = "^2.8.0"
 bcrypt = "^4.1.2"
+pillow = "^10.3.0"
 
 
 [build-system]

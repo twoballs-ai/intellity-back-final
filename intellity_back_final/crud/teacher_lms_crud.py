@@ -7,12 +7,6 @@ from ..models import course_editor_lms_models
 from ..schemas import lms_schemas
 from typing import List
 
-# def get_user(db: Session, user_id: int):
-#     return db.query(models.User).filter(models.User.id == user_id).first()
-
-
-# def get_user_by_email(db: Session, email: str):
-#     return db.query(models.User).filter(models.User.email == email).first()
 
 def get_category(db: Session, category_id: int):
     return db.query(course_editor_lms_models.CourseCategory).filter(course_editor_lms_models.CourseCategory.id == category_id).first()
@@ -55,8 +49,15 @@ def get_course_by_title(db: Session, title: str):
 def get_get_course_by_id(db: Session, course_id: int):
     return db.query(course_editor_lms_models.Course).filter_by(id = course_id).first()
 
-def create_course(db: Session, course: lms_schemas.CourseCreate, user_id:int):
-    db_course = course_editor_lms_models.Course(teacher_id=user_id, category=course.category, title=course.title, description=course.description)
+def create_course(db: Session, course: lms_schemas.CourseCreate, user_id: int, cover_image_name: str, cover_path: str):
+    db_course = course_editor_lms_models.Course(
+        teacher_id=user_id,
+        category=course.category,
+        title=course.title,
+        description=course.description,
+        cover_image_name=cover_image_name,
+        cover_path=cover_path
+    )
     db.add(db_course)
     db.commit()
     db.refresh(db_course)
@@ -157,35 +158,87 @@ def create_quiz(db: Session, quiz: lms_schemas.QuizCreate):
     db.refresh(db_quiz)
     return db_quiz.to_dict()
 
-def update_quiz_type(db: Session, quiz_id: int, quiz_type_id: int):
-    db_quiz = db.query(course_editor_lms_models.QuizLesson).filter(course_editor_lms_models.QuizLesson.id == quiz_id).first()
-    if db_quiz:
-        db_quiz.quiz_type_id = quiz_type_id
-        db.commit()
-        db.refresh(db_quiz)
-    return db_quiz.to_dict()
 
-def add_question_to_quiz(db: Session, quiz_id: int, question: lms_schemas.QuestionCreate):
-    db_quiz = db.query(course_editor_lms_models.QuizLesson).filter(course_editor_lms_models.QuizLesson.id == quiz_id).first()
+# def update_quiz(db: Session, quiz_update: lms_schemas.QuizUpdate):
+#     # Получение quiz по его id
+#     quiz = db.query(course_editor_lms_models.QuizLesson).filter(course_editor_lms_models.QuizLesson.id == quiz_update.quiz_id).first()
+#     if not quiz:
+#         raise HTTPException(status_code=404, detail="Quiz not found")
 
-    if not db_quiz:
+#     # Получение quiz_type_id на основе quiz_type
+#     quiz_type = db.query(course_editor_lms_models.QuizType).filter(course_editor_lms_models.QuizType.name == quiz_update.quiz_type).first()
+#     if not quiz_type:
+#         raise HTTPException(status_code=404, detail="Quiz type not found")
+
+#     # Обновление полей quiz
+#     quiz.quiz_type_id = quiz_type.id
+#     quiz.question = quiz_update.question
+
+#     # Проверка на тип "radio" и количество правильных ответов
+#     if quiz_type.name == "radio":
+#         true_answers_count = sum(1 for q in quiz_update.answers if q.is_true_answer)
+#         if true_answers_count > 1:
+#             raise HTTPException(status_code=400, detail="For 'radio' type quiz, only one answer can be true")
+
+#     # Удаление существующих ответов
+#     db.query(course_editor_lms_models.Answer).filter(course_editor_lms_models.Answer.quiz_id == quiz.id).delete()
+
+#     # Добавление новых ответов с порядком из frontend
+#     for answer_data in quiz_update.answers:
+#         answer = course_editor_lms_models.Answer(
+#             quiz_id=quiz.id,
+#             answer_text=answer_data.answer_text,
+#             order=answer_data.order,
+#             is_true_answer=answer_data.is_true_answer
+#         )
+#         db.add(answer)
+    
+#     db.commit()
+#     db.refresh(quiz)
+#     return quiz.to_dict()
+def update_quiz(db: Session, data: lms_schemas.QuizUpdate):
+    # Получение quiz по его id
+    quiz_lesson = db.query(course_editor_lms_models.QuizLesson).filter_by(id=data.stage_id).first()
+
+
+    if not quiz_lesson:
         raise HTTPException(status_code=404, detail="Quiz not found")
 
-    if db_quiz.quiz_type.name == 'radio':
-        true_answers = sum(1 for q in db_quiz.questions if q.is_true_answer)
-        if question.is_true_answer and true_answers >= 1:
-            raise HTTPException(status_code=400, detail="Radio quiz can have only one true answer")
+    # Получение quiz_type_id на основе quiz_type
+    quiz_type = db.query(course_editor_lms_models.QuizType).filter(course_editor_lms_models.QuizType.name == data.quiz_type).first()
+    if not quiz_type:
+        raise HTTPException(status_code=404, detail="Quiz type not found")
 
-    db_question = course_editor_lms_models.Question(
-        quiz_id=quiz_id,
-        question_text=question.question_text,
-        order=question.order,
-        is_true_answer=question.is_true_answer
-    )
-    db.add(db_question)
+    # Обновление полей quiz
+    if data.title:
+        quiz_lesson.title = data.title
+
+    quiz_lesson.quiz_type_id = quiz_type.id
+    if data.question:
+        quiz_lesson.question = data.question
+    
+    # Проверка на тип "radio" и количество правильных ответов
+    if quiz_type.name == "radio":
+        true_answers_count = sum(1 for q in data.answers if q.is_true_answer)
+        if true_answers_count > 1:
+            raise HTTPException(status_code=400, detail="For 'radio' type quiz, only one answer can be true")
+
+    # Удаление существующих ответов
+    db.query(course_editor_lms_models.Answer).filter(course_editor_lms_models.Answer.quiz_id == quiz_lesson.id).delete()
+
+    # Добавление новых ответов с порядком из frontend
+    for answer_data in data.answers:
+        answer = course_editor_lms_models.Answer(
+            quiz_id=quiz_lesson.id,
+            answer_text=answer_data.answer_text,
+            order=answer_data.order,
+            is_true_answer=answer_data.is_true_answer
+        )
+        db.add(answer)
+    
     db.commit()
-    db.refresh(db_question)
-    return db_question.to_dict()
+    db.refresh(quiz_lesson)
+    return quiz_lesson.to_dict()
 
 def get_stage(db: Session, stage_id: int):
     return db.query(course_editor_lms_models.Stage).filter(course_editor_lms_models.Stage.id == stage_id).first()

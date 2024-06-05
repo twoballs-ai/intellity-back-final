@@ -34,13 +34,11 @@ import bcrypt
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 import os
-from ..auth import create_access_token, create_refresh_token, verify_token
+from ..auth import create_access_token, create_refresh_token, verify_token, oauth2_scheme
 
 from pydantic import BaseModel
 
 
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/user/token")
 SECRET_KEY = os.environ.get("SECRET_KEY")
 ALGORITHM = os.environ.get("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", 15))
@@ -56,7 +54,7 @@ def get_db():
         db.close()
 
 def authenticate_user(username: str, password: str, db: Session = Depends(get_db)):
-    user = user_crud.get_user(db, username)
+    user = user_crud.get_user_by_email(db, username)
     if not user or not bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8')):
         return None
     return user
@@ -79,8 +77,7 @@ class Teacher(TeacherCreate):
 
     class Config:
         orm_mode = True
-        
-        
+
 class StudentCreate(UserCreate):
     interested_categories: str
 
@@ -88,61 +85,49 @@ class Student(StudentCreate):
     id: int
 
     class Config:
-        orm_mode = True 
+        orm_mode = True
         
-        
-@user_views.post("/get-current-user/")
-def get_current_user(token: str = Depends(oauth2_scheme)):
+
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        user_id: int = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+        user = user_crud.get_user(db, user_id)
+        if user is None:
+            raise credentials_exception
+        return user
     except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # Here you can fetch the current user based on the username
-    # For example, user = get_user(username)
-    # Or if you're using OAuth2 with supported user identifiers, you can simply return the username
-    
-    # Return the current user
-    return username
+        raise credentials_exception
+    except jwt.DecodeError:
+        raise credentials_exception
+
+
+
+@user_views.post("/get-current-user/")
+def get_current_user_view(current_user: User = Depends(get_current_user)):
+    return current_user
 
 @user_views.post("/teacher-register/")
 def create_teacher_view(teacher: TeacherCreate, db: Session = Depends(get_db)):
-    """
-    Регистрирует нового учителя.
-    """
-    teacher = user_crud.create_teacher(db=db, name=teacher.name,lastName = teacher.lastName, email=teacher.email, password=teacher.password, qualification=teacher.qualification, skills=teacher.skills)
-    # Вызываем функцию create_teacher, передавая ей данные из teacher
+    teacher = user_crud.create_teacher(db=db, name=teacher.name, lastName=teacher.lastName, email=teacher.email, password=teacher.password, qualification=teacher.qualification, skills=teacher.skills)
     return teacher
 
 @user_views.post("/student-register/")
 def create_student_view(student: StudentCreate, db: Session = Depends(get_db)):
-    """
-    Регистрирует нового студента.
-    """
-    student = user_crud.create_student(db=db,  email=student.email, password=student.password, interested_categories=student.interested_categories)
+    student = user_crud.create_student(db=db, email=student.email, password=student.password, interested_categories=student.interested_categories)
     return student
-
 
 @user_views.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(form_data.username, form_data.password, db)
+    print(user)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -157,25 +142,31 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     refresh_token = create_refresh_token(
         data={"sub": user.id, "type": "refresh"}, expires_delta=refresh_token_expires
     )
-    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "Bearer", "type":user.type}
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "Bearer", "type": user.type}
 
-
-# Метод для обновления токена доступа с использованием токена обновления
-
-@user_views.post("/token/refresh")
+@user_views.post("/token/refresh/")
 async def refresh_access_token(refresh_token: str = Form(...)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid refresh token",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    verify_token(refresh_token, credentials_exception)
-    payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-    username: str = payload.get("sub")
+
+    try:
+        # Verify and decode the refresh token
+        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+    except jwt.ExpiredSignatureError:
+        raise credentials_exception
+    except jwt.InvalidTokenError:
+        raise credentials_exception
+
+    # Create new access token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": username, "type": "access"}, expires_delta=access_token_expires
+        data={"sub": user_id, "type": "access"}, expires_delta=access_token_expires
     )
+
     return {"access_token": access_token, "token_type": "Bearer"}
-
-

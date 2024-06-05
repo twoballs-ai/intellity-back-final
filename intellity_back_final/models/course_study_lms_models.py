@@ -39,7 +39,24 @@ class CourseEnrollment(Base):
 
     def __str__(self):
         return f"{self.student_id}-{self.course_id}"
-
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "course_id": self.course_id,
+            "student_id": self.student_id,
+            "enrolled_time": self.enrolled_time.isoformat() if self.enrolled_time else None,
+            "progress": self.progress,
+            "is_completed": self.is_completed,
+            "course": {
+                "id": self.course_model.id,
+                "title": self.course_model.title
+            } if self.course_model else None,
+            "student": {
+                "id": self.student_model.id,
+                # "name": self.student_model.name
+            } if self.student_model else None,
+        }
 
 class ChapterProgress(Base):
     __tablename__ = "chapter_progress"
@@ -91,3 +108,15 @@ class StageProgress(Base):
 
     def __str__(self):
         return f"{self.student_id}-{self.stage_id}"
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "student_id": self.student_id,
+            "stage_id": self.stage_id,
+            "is_completed": self.is_completed,
+            "start_time": self.start_time.isoformat() if self.start_time else None,
+            "end_time": self.end_time.isoformat() if self.end_time else None,
+            # "stage": self.stage.to_dict() if self.stage else None,
+            # "student": self.student.to_dict() if self.student else None,
+        }
