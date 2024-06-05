@@ -8,6 +8,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgres://postgres:123@intellitydb:5432/intellity_db
+      DATABASE_URL: postgres://postgres:123@<YOUR_SERVER_IP>:54321/intellity_db
+
     depends_on:
-      - intellitydb
+      - postgres
+
+volumes:
+  postgres_data:
+    external: true
