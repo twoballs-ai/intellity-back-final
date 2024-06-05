@@ -108,3 +108,15 @@ class StageProgress(Base):
 
     def __str__(self):
         return f"{self.student_id}-{self.stage_id}"
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "student_id": self.student_id,
+            "stage_id": self.stage_id,
+            "is_completed": self.is_completed,
+            "start_time": self.start_time.isoformat() if self.start_time else None,
+            "end_time": self.end_time.isoformat() if self.end_time else None,
+            # "stage": self.stage.to_dict() if self.stage else None,
+            # "student": self.student.to_dict() if self.student else None,
+        }

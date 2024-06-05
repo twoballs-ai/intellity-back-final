@@ -198,7 +198,7 @@ def delete_course(course_id: int, current_user: User = Depends(get_current_user)
 
 
 @lms_views.get("/course-chapter-list/{course_id}")
-def read_chapter(course_id, db: Session = Depends(get_db)):
+def read_chapter(course_id:int, db: Session = Depends(get_db)):
     
     chapter = teacher_lms_crud.get_course_chapters(db,course_id=course_id)
 
@@ -212,14 +212,19 @@ def read_modules(chapter_id, db: Session = Depends(get_db)):
 
     return { "data": chapter_modules}
 
-@lms_views.get("/course-chapter-module-stage-list/{module_id}")
-def read_stages(module_id, db: Session = Depends(get_db)):
-    
-    module_stages = teacher_lms_crud.get_course_chapter_module_stages(db,module_id=module_id)
-    
-    return { "data": module_stages}
+@lms_views.get("/module-stage-list/{module_id}")
+def read_stages(module_id:int, db: Session = Depends(get_db)):
+    try:
 
+        module_stages = teacher_lms_crud.get_course_chapter_module_stages(db,module_id=module_id)
+        
+        return { "data": module_stages}
 
+    except Exception as e:
+        return JSONResponse(
+            content={"status": False, "error": str(e)},
+            status_code=500,
+        )
 
 @lms_views.get("/get_chapter/{chapter_id}")
 async def get_chapter(chapter_id: int, db: Session = Depends(get_db)):

@@ -88,3 +88,22 @@ def update_stage_progress(db: Session, student_id: int, stage_id: int, is_comple
 
 def get_stage_for_student(db: Session, stage_id: int):
     return db.query(course_editor_lms_models.Stage).filter(course_editor_lms_models.Stage.id == stage_id).first()
+
+def get_course_chapter_module_stages(db: Session, module_id: int, user_id: int, skip: int = 0, limit: int = 100):
+    module = db.query(course_editor_lms_models.Module).filter(course_editor_lms_models.Module.id == module_id).first()
+    if module:
+        stages = db.query(course_editor_lms_models.Stage).filter(course_editor_lms_models.Stage.module_id == module_id).order_by(asc(course_editor_lms_models.Stage.id)).all()
+        stage_progress = db.query(StageProgress).filter(StageProgress.student_id == user_id).all()
+
+        progress_map = {sp.stage_id: sp.is_completed for sp in stage_progress}
+
+        list_items = []
+        for stage in stages:
+            if stage.type == 'quiz':
+                stage_dict = stage.to_learn_dict()
+            else:
+                stage_dict = stage.to_dict()
+            stage_dict['is_completed'] = progress_map.get(stage.id, False)
+            list_items.append(stage_dict)
+
+        return list_items
