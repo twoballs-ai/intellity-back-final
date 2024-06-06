@@ -1,17 +1,23 @@
-version: "3.8"
+version: '3.8'
 
 services:
   postgres:
-    image: postgres:16
-    restart: always
-    ports:
-      - "5432:5432"
+    build: .
+    container_name: my_postgres
     environment:
       POSTGRES_DB: intellity_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 123
+      POSTGRES_PASSWORD: dfvbd3246354**&%$!
+    ports:
+      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - postgres_network
 
 volumes:
-  postgres_data:
+  pgdata:
+
+networks:
+  postgres_network:
+    driver: bridge
