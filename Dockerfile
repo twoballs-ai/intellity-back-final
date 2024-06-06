@@ -1,34 +1,26 @@
-# Используем официальный образ Python в качестве базового
+# Используем официальный образ Python
 FROM python:3.11
 
-# Устанавливаем curl и pyenv
-RUN apt-get update && \
-    apt-get install -y curl build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev wget llvm libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev python-openssl git && \
-    curl https://pyenv.run | bash
-
-# Настройка окружения для pyenv
-ENV PYENV_ROOT /root/.pyenv
-ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
-
-# Устанавливаем Python через pyenv
-RUN pyenv install 3.11.0 && pyenv global 3.11.0
-
 # Устанавливаем Poetry
-RUN curl -sSL https://install.python-poetry.org | python3 -
+RUN pip install poetry
 
-# Добавляем Poetry в PATH
-ENV PATH /root/.local/bin:$PATH
+# Устанавливаем переменную окружения для вывода сообщений
+ENV PYTHONUNBUFFERED=1
 
-# Устанавливаем зависимости через Poetry
-COPY pyproject.toml poetry.lock /app/
+# Создаем и устанавливаем рабочую директорию
 WORKDIR /app
+
+# Копируем файлы pyproject.toml и poetry.lock
+COPY pyproject.toml poetry.lock ./
+
+# Устанавливаем зависимости с помощью Poetry
 RUN poetry install --no-root --no-dev
 
-# Копируем весь проект в контейнер
-COPY . /app
+# Копируем остальные файлы приложения
+COPY . .
 
-# Открываем порт для приложения
+# Открываем порт
 EXPOSE 8000
 
-# Запускаем FastAPI сервер с использованием Uvicorn
-CMD ["poetry", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Команда для запуска приложения
+CMD ["uvicorn", "intellity_back_final.main:app", "--host", "0.0.0.0", "--port", "8000"]
