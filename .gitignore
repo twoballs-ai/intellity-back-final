@@ -5,7 +5,7 @@ __pycache__/
 
 # C extensions
 *.so
-database/
+
 # Distribution / packaging
 .Python
 build/
@@ -50,6 +50,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+
 
 # Translations
 *.mo
@@ -164,5 +165,5 @@ DevMigrations/versions
 .python-version
 uploaded_files
 package.json
-database/
+
 uploaded_directory/
