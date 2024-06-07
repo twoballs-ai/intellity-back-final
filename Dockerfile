@@ -1,26 +1,36 @@
-# Используем официальный образ Python
-FROM python:3.11
+FROM python:3.11-slim
 
-# Устанавливаем Poetry
-RUN pip install poetry
-
-# Устанавливаем переменную окружения для вывода сообщений
-ENV PYTHONUNBUFFERED=1
-
-# Создаем и устанавливаем рабочую директорию
 WORKDIR /app
 
-# Копируем файлы pyproject.toml и poetry.lock
-COPY pyproject.toml poetry.lock ./
+ENV PYTHONDONTWRITEBYTECODE 1 \
+    PYTHONUNBUFFERED 1
 
-# Устанавливаем зависимости с помощью Poetry
-RUN poetry install --no-root --no-dev
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
-# Копируем остальные файлы приложения
 COPY . .
+# Копируем файл окружения
+# COPY .env .env
 
-# Открываем порт
 EXPOSE 8000
 
-# Команда для запуска приложения
 CMD ["uvicorn", "intellity_back_final.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# FROM python:3.11 as requirements-stage
+
+# WORKDIR /tmp
+
+# # не изменять
+# RUN pip install poetry
+
+# COPY ./pyproject.toml ./poetry.lock* /tmp/
+
+# RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
+
+# FROM tiangolo/uvicorn-gunicorn-fastapi:python3.11
+
+# COPY --from=requirements-stage /tmp/requirements.txt /intellity_back_final/requirements.txt
+
+# RUN pip install --no-cache-dir --upgrade -r /intellity_back_final/requirements.txt
+
+# COPY ./intellity_back_final /intellity_back_final

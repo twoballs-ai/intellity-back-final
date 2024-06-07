@@ -1,18 +1,11 @@
-version: "3.8"
+version: '3.8'
 
 services:
-  fastapi:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  app:
+    build: .
     ports:
       - "8000:8000"
+    volumes:
+      - .:/app
     environment:
-      DATABASE_URL: postgres://postgres:123@<YOUR_SERVER_IP>:54321/intellity_db
-
-    depends_on:
-      - postgres
-
-volumes:
-  postgres_data:
-    external: true
+      - SQLALCHEMY_DATABASE_URL=postgresql://postgres:123@localhost:54321/intellity_db
