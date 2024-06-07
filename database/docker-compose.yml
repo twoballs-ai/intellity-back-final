@@ -1,19 +1,20 @@
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
-    image: postgres:latest
-    container_name: intellity_postgres
+    image: postgres:16
+    restart: always
+    ports:
+      - "54321:5432"
     environment:
       POSTGRES_DB: intellity_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: dfvbd3246354**&%$!
-    ports:
-      - "5432:5432"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
 
 volumes:
-  pgdata:
+  postgres_data:
+
 
   
