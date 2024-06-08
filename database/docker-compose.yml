@@ -5,7 +5,7 @@ services:
     image: postgres:16
     restart: always
     ports:
-      - "54321:5432"
+      - "5432:5432"
     environment:
       POSTGRES_DB: intellity_db
       POSTGRES_USER: postgres
