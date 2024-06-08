@@ -9,3 +9,8 @@ services:
       - .:/app
     environment:
       - SQLALCHEMY_DATABASE_URL=postgresql://postgres:123@localhost:54321/intellity_db
+    networks:
+      - intellity_network
+
+networks:
+  intellity_network:

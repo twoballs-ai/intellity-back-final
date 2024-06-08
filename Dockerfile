@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE 1 \
     PYTHONUNBUFFERED 1
 
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir --upgrade -r /intellity_back_final/requirements.txt
 
 COPY . .
 # Копируем файл окружения

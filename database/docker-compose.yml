@@ -13,8 +13,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+    networks:
+      - intellity_network
+
 volumes:
   postgres_data:
 
-
-  
+networks:
+  intellity_network:
