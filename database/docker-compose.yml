@@ -9,9 +9,15 @@ services:
     environment:
       POSTGRES_DB: intellity_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 123
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+    networks:
+      - intellity_network
+
 volumes:
   postgres_data:
+
+networks:
+  intellity_network:

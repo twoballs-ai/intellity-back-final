@@ -1,34 +1,41 @@
-# Используем официальный образ Python в качестве базового
-FROM python:3.11
+# Stage 1: Build stage
+FROM python:3.11-slim as builder
 
-# Устанавливаем curl и pyenv
-RUN apt-get update && \
-    apt-get install -y curl build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev wget llvm libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev python-openssl git && \
-    curl https://pyenv.run | bash
+# Set environment variables
+ENV POETRY_VERSION=1.8.2 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-# Настройка окружения для pyenv
-ENV PYENV_ROOT /root/.pyenv
-ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
+# Install Poetry
+RUN pip install --no-cache-dir "poetry==$POETRY_VERSION"
 
-# Устанавливаем Python через pyenv
-RUN pyenv install 3.11.0 && pyenv global 3.11.0
-
-# Устанавливаем Poetry
-RUN curl -sSL https://install.python-poetry.org | python3 -
-
-# Добавляем Poetry в PATH
-ENV PATH /root/.local/bin:$PATH
-
-# Устанавливаем зависимости через Poetry
-COPY pyproject.toml poetry.lock /app/
+# Create a directory for the application
 WORKDIR /app
-RUN poetry install --no-root --no-dev
 
-# Копируем весь проект в контейнер
-COPY . /app
+COPY pyproject.toml poetry.lock ./
+# Install dependencies with Poetry
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-dev --no-interaction --no-ansi
 
-# Открываем порт для приложения
+COPY . .
+
+# Stage 2: Final stage
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+    
+WORKDIR /app
+
+# Copy the dependencies from the builder stage
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy the application code
+COPY . .
+
+# Expose the application port
 EXPOSE 8000
 
-# Запускаем FastAPI сервер с использованием Uvicorn
-CMD ["poetry", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "intellity_back_final.main:app", "--host", "0.0.0.0", "--port", "8000"]
+

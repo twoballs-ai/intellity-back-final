@@ -51,9 +51,11 @@ coverage.xml
 .pytest_cache/
 cover/
 
+
 # Translations
 *.mo
 *.pot
+
 
 # Django stuff:
 *.log
@@ -163,3 +165,5 @@ DevMigrations/versions
 .python-version
 uploaded_files
 package.json
+
+uploaded_directory/
