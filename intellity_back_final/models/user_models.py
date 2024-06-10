@@ -22,7 +22,18 @@ class User(Base):
         'polymorphic_identity': 'user_model',
         'polymorphic_on': 'type'
     }
-
+    def to_dict(self):
+        """
+        Convert the user object to a dictionary.
+        """
+        return {
+            "id": self.id,
+            "email": self.email,
+            # Add other attributes you want to include in the dictionary
+            # For example, if you want to include the user type:
+            "type": self.type,
+            # Add more attributes as needed
+        }
     @classmethod
     def create_password_hash(cls, password):
         """
@@ -56,7 +67,20 @@ class Teacher(User):
 
     def __str__(self):
         return str(self.id)
-
+    
+    def to_dict(self):
+        """
+        Convert the teacher object to a dictionary.
+        """
+        user_dict = super().to_dict()  # Call the parent method to get the base attributes
+        teacher_dict = {
+            "name": self.name,
+            "lastName": self.lastName,
+            "qualification": self.qualification,
+            "skills": self.skills,
+            # Add other attributes specific to the teacher
+        }
+        return {**user_dict, **teacher_dict} 
 
 class Student(User):
     __tablename__ = "student_model"
@@ -76,3 +100,14 @@ class Student(User):
 
     def __str__(self):
         return str(self.id)
+    
+    def to_dict(self):
+        """
+        Convert the student object to a dictionary.
+        """
+        user_dict = super().to_dict()  # Call the parent method to get the base attributes
+        student_dict = {
+            "interested_categories": self.interested_categories,
+            # Add other attributes specific to the student
+        }
+        return {**user_dict, **student_dict}  # Merge dictionaries

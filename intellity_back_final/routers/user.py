@@ -116,14 +116,39 @@ def get_current_user_view(current_user: User = Depends(get_current_user)):
 
 @user_views.post("/teacher-register/")
 def create_teacher_view(teacher: TeacherCreate, db: Session = Depends(get_db)):
-    teacher = user_crud.create_teacher(db=db, name=teacher.name, lastName=teacher.lastName, email=teacher.email, password=teacher.password, qualification=teacher.qualification, skills=teacher.skills)
-    return teacher
+    try:
+        teacher = user_crud.create_teacher(db=db, name=teacher.name, lastName=teacher.lastName, email=teacher.email, password=teacher.password, qualification=teacher.qualification, skills=teacher.skills)
+        return JSONResponse(
+            content={
+                    "status": True,
+                    "data": teacher.to_dict(),
+                    "message":"Вы зарегестрированы как учитель"
+                },
+                status_code=200,
+            )
+    except Exception as e:
+        return JSONResponse(
+            content={"status": False, "error": str(e)},
+            status_code=500,
+        )
 
 @user_views.post("/student-register/")
 def create_student_view(student: StudentCreate, db: Session = Depends(get_db)):
-    student = user_crud.create_student(db=db, email=student.email, password=student.password, interested_categories=student.interested_categories)
-    return student
-
+    try:
+        student = user_crud.create_student(db=db, email=student.email, password=student.password, interested_categories=student.interested_categories)
+        return JSONResponse(
+            content={
+                    "status": True,
+                    "data": student.to_dict(),
+                    "message":"Вы зарегестрированы как студент"
+                },
+                status_code=200,
+            )
+    except Exception as e:
+        return JSONResponse(
+            content={"status": False, "error": str(e)},
+            status_code=500,
+        )
 @user_views.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(form_data.username, form_data.password, db)

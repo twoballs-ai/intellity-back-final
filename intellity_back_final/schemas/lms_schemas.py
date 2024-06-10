@@ -33,6 +33,7 @@ class Course(CourseBase):
     subscription_counter: int
     cover_image_name: Optional[str] = None
     cover_path: Optional[str] = None
+    status: str
 
     class Config:
         orm_mode = True  

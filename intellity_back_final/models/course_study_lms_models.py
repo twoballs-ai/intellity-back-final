@@ -75,7 +75,6 @@ class ChapterProgress(Base):
         return f"{self.student_id}-{self.chapter_id}"
     
     
-    
 class ModuleProgress(Base):
     __tablename__ = "module_progress"
 
@@ -91,7 +90,6 @@ class ModuleProgress(Base):
 
     def __str__(self):
         return f"{self.student_id}-{self.module_id}"
-
 
 class StageProgress(Base):
     __tablename__ = "stage_progress"
@@ -117,6 +115,4 @@ class StageProgress(Base):
             "is_completed": self.is_completed,
             "start_time": self.start_time.isoformat() if self.start_time else None,
             "end_time": self.end_time.isoformat() if self.end_time else None,
-            # "stage": self.stage.to_dict() if self.stage else None,
-            # "student": self.student.to_dict() if self.student else None,
         }

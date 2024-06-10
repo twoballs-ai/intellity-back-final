@@ -46,7 +46,7 @@ def get_courses(db: Session, skip: int = 0, limit: int = 100):
 def get_course_by_title(db: Session, title: str):
     return db.query(course_editor_lms_models.Course).filter(course_editor_lms_models.Course.title == title).first()   
 
-def get_get_course_by_id(db: Session, course_id: int):
+def get_course_by_id(db: Session, course_id: int):
     return db.query(course_editor_lms_models.Course).filter_by(id = course_id).first()
 
 def create_course(db: Session, course: lms_schemas.CourseCreate, user_id: int, cover_image_name: str, cover_path: str):

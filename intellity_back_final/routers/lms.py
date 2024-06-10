@@ -92,33 +92,36 @@ def read_courses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db))
 
 
 @lms_views.get("/course/")
-def read_courses(course_id:int, db: Session = Depends(get_db)):
+def read_courses(course_id: int, current_user: User = Depends(get_current_user),  db: Session = Depends(get_db)):
+    course = teacher_lms_crud.get_course_by_id(db, course_id=course_id)
+    if not course:
+        return JSONResponse(
+            content={"status": False, "message": "Course not found"},
+            status_code=404,
+        )
+    if course.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You are not the owner of this course")
     
-    course = teacher_lms_crud.get_get_course_by_id(db,course_id=course_id,)
-    chapters=db.query().filter(ChapterModel.course_id == course_id).all()
-    print(chapters)
-    data=[]
-    chapters = [
+    chapters = db.query(ChapterModel).filter(ChapterModel.course_id == course_id).all()
+    chapters_data = [
         {
-            "id": category.id,
-            "title": category.title,
-            "description": category.description,
-
+            "id": chapter.id,
+            "title": chapter.title,
+            "description": chapter.description,
         }
-        for category in chapters
+        for chapter in chapters
     ]
-    data.append(course_id)
-    data.append(chapters)
+
+    data = {
+        "course": course.to_dict(),
+        "chapters": chapters_data
+    }
+
     return JSONResponse(
-        content={
-            "status": True,
-            "chapters": chapters,
-        },
+        content={"status": True, "data": data},
         status_code=200,
     )
-
-
-@lms_views.post("/course/", response_model=lms_schemas.Course)
+@lms_views.post("/course/")
 def create_course_category(
     title: str = Form(..., max_length=30), 
     description: str = Form(None), 
@@ -172,7 +175,14 @@ def create_course_category(
     db.commit()
     db.refresh(course_create)
 
-    return course_create
+    return JSONResponse(
+        content={
+            "status": True,
+            "data":course_create.to_dict(),
+            "message": "Вы добавили курс"
+        },
+        status_code=200,
+    )
 
 
 @lms_views.delete("/delete-course/{course_id}")
@@ -617,20 +627,11 @@ async def create_and_associate_classic_lesson_route(data: lms_schemas.ClassicLes
 
         db.commit()
 
-        return {"message": "Classic lesson created and associated with stage successfully", "data": new_classic_lesson}
+        return {"message": "Вы успешно добавили классический урок", "data": new_classic_lesson}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
-@lms_views.put("/update/classic_lesson/")
-async def update_classic_lesson(data: lms_schemas.ClassicLessonUpdate, db: Session = Depends(get_db)):
-    try:
-        
-        classic_lesson = teacher_lms_crud.update_classic_lesson(db, data)
-        return {"message": "Classic lesson updated successfully", "data": classic_lesson}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @lms_views.put("/update/classic_lesson/")
 async def update_classic_lesson(data: lms_schemas.ClassicLessonUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -660,7 +661,7 @@ async def update_classic_lesson(data: lms_schemas.ClassicLessonUpdate, current_u
         if course.teacher_id != current_user.id:
             raise HTTPException(status_code=403, detail="You are not the owner of this course")
         classic_lesson = teacher_lms_crud.update_classic_lesson(db, data)
-        return {"message": "Classic lesson updated successfully", "data": classic_lesson}
+        return {"message": "Данные успешно обновлены", "data": classic_lesson}
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -692,7 +693,7 @@ async def create_and_associate_video_lesson_route(data: lms_schemas.VideoLesson,
 
         db.commit()
 
-        return {"message": "Video lesson created and associated with stage successfully", "data": new_video_lesson}
+        return {"message": "Вы успешно добавили видео урок", "data": new_video_lesson}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -758,7 +759,7 @@ async def create_quiz_route(quiz: lms_schemas.QuizCreate, current_user: User = D
 
         db.commit()
 
-        return {"message": "Quiz created successfully", "data": new_quiz}
+        return {"message": "Вы успешно добавили квиз", "data": new_quiz}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -869,9 +870,17 @@ def read_stage(stage_id: int, current_user: User = Depends(get_current_user), db
 
     return stage.to_dict()
 
-@lms_views.get("/teacher-courses/", response_model=List[lms_schemas.Course])
+@lms_views.get("/teacher-courses/")
 def get_teacher_courses(current_user: User = Depends(get_current_user),  skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     # Получение курсов для указанного преподавателя из базы данных, используя идентификатор пользователя
 
     courses = teacher_lms_crud.get_teacher_courses(db, teacher_id=current_user.id, skip=skip, limit=limit)
-    return courses
+    courses_data = [course.to_dict() for course in courses]
+    
+    return JSONResponse(
+        content={
+            "status": True,
+            "data": courses_data
+        },
+        status_code=200,
+    )

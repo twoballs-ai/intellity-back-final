@@ -17,6 +17,9 @@ import jwt
 import bcrypt
 from fastapi.staticfiles import StaticFiles
 from .auth import oauth2_scheme
+import intellity_back_final.handlers  # Импортируем для регистрации обработчиков событий
+
+
 
 app = FastAPI()
 
