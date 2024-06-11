@@ -186,7 +186,7 @@ class Stage(Base):
     title = Column(String(30))
 
     module = relationship("Module", back_populates="stages")
-
+    stage_progress = relationship("StageProgress", back_populates="stage") 
     __mapper_args__ = {
         'polymorphic_identity': 'stage_item',
         'polymorphic_on': type

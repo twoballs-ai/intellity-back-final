@@ -26,6 +26,7 @@ import json
 from intellity_back_final.models.course_editor_lms_models import Course, CourseCategory, Module, Stage as StageModel, Answer as AnswerModel, QuizLesson as QuizLessonModel
 import logging
 
+from intellity_back_final.models.course_study_lms_models import CourseEnrollment
 from intellity_back_final.models.user_models import User
 from intellity_back_final.routers.user import get_current_user
 from ..database import SessionLocal
@@ -121,12 +122,15 @@ def read_courses(course_id: int, current_user: User = Depends(get_current_user),
         content={"status": True, "data": data},
         status_code=200,
     )
+
+
+
 @lms_views.post("/course/")
 def create_course_category(
-    title: str = Form(..., max_length=30), 
-    description: str = Form(None), 
-    category: int = Form(...), 
-    current_user: User = Depends(get_current_user), 
+    title: str = Form(..., max_length=30),
+    description: str = Form(None),
+    category: int = Form(...),
+    current_user: User = Depends(get_current_user),
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
@@ -145,19 +149,22 @@ def create_course_category(
     if search_course:
         raise HTTPException(status_code=400, detail="Course already exists")
 
+    # Set default status_id if not provided
+    default_status_id = 1
+
     course_create = teacher_lms_crud.create_course(
-        db=db, 
-        course=lms_schemas.CourseCreate(title=title, description=description, category=category), 
-        user_id=current_user.id, 
-        cover_image_name=file.filename, 
+        db=db,
+        course=lms_schemas.CourseCreate(title=title, description=description, category=category, status_id=default_status_id),
+        user_id=current_user.id,
+        cover_image_name=file.filename,
         cover_path=""
     )
     if not course_create:
         raise HTTPException(status_code=404, detail="Course not found")
-    
+
     course_id = course_create.id
     course_title = course_create.title
-    course_directory_name = f"{course_id}_{course_title.replace(' ', '_')}"
+    course_directory_name = f"{course_id}_{current_user.id}"
     course_directory_path = os.path.join(UPLOAD_DIRECTORY, course_directory_name)
     covers_directory_path = os.path.join(course_directory_path, "covers")
     media_directory_path = os.path.join(course_directory_path, "media")
@@ -178,13 +185,73 @@ def create_course_category(
     return JSONResponse(
         content={
             "status": True,
-            "data":course_create.to_dict(),
+            "data": course_create.to_dict(),
             "message": "Вы добавили курс"
         },
         status_code=200,
     )
 
+@lms_views.put("/course/{course_id}")
+def update_course(
+    course_id: int,
+    title: str = Form(..., max_length=30), 
+    description: str = Form(None), 
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    if file.content_type not in ["image/jpeg", "image/png"]:
+        raise HTTPException(status_code=400, detail="Invalid file type. Only JPEG and PNG files are allowed.")
 
+    # Verify the image
+    try:
+        with PILImage.open(file.file) as img:
+            img.verify()
+            file.file.seek(0)  # Reset file pointer to beginning after verify
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image file.")
+
+    course = teacher_lms_crud.get_course_by_id(db, course_id=course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    # Check if the current user owns the course or has permission to edit it
+    if course.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this course")
+
+    # Update course fields
+    course.title = title
+    course.description = description
+    course.cover_image_name=file.filename,
+    # Update cover image
+    course_directory_name = f"{course_id}_{course.teacher_id}"
+    course_directory_path = os.path.join(UPLOAD_DIRECTORY, course_directory_name)
+    covers_directory_path = os.path.join(course_directory_path, "covers")
+
+    os.makedirs(covers_directory_path, exist_ok=True)
+
+    file_location = os.path.join(covers_directory_path, file.filename)
+
+    # Delete the old cover image if it exists
+    if course.cover_path and os.path.exists(course.cover_path):
+        os.remove(course.cover_path)
+
+    with open(file_location, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    course.cover_path = file_location
+
+    db.commit()
+    db.refresh(course)
+
+    return JSONResponse(
+        content={
+            "status": True,
+            "data": course.to_dict(),
+            "message": "Курс обновлен"
+        },
+        status_code=200,
+    )
 @lms_views.delete("/delete-course/{course_id}")
 def delete_course(course_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     course = db.query(Course).filter(Course.id == course_id).first()
@@ -195,16 +262,21 @@ def delete_course(course_id: int, current_user: User = Depends(get_current_user)
     if course.teacher_id != current_user.id:
         raise HTTPException(status_code=403, detail="You are not the owner of this course")
     
+    # Delete associated enrollments
+    db.query(CourseEnrollment).filter(CourseEnrollment.course_id == course_id).delete()
+    
+    # Delete the course
     db.delete(course)
     db.commit()
     
     return JSONResponse(
         content={
             "status": True,
-            "text_for_budges": "Course deleted successfully."
+            "message": "Course deleted successfully."
         },
         status_code=200,
     )
+
 
 
 @lms_views.get("/course-chapter-list/{course_id}")

@@ -34,3 +34,6 @@ def get_user(db: Session, user_id: int):
 
 def get_user_by_email(db: Session, email: str):
     return db.query(user_models.User).filter(user_models.User.email == email).first()
+
+def get_teacher_by_user_id(db: Session, user_id: int):
+    return db.query(user_models.Teacher).filter(user_models.Teacher.id == user_id).first()

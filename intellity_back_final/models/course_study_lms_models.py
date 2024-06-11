@@ -68,7 +68,7 @@ class ChapterProgress(Base):
     start_time: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
     end_time: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
 
-    chapter: Mapped["Chapter"] = relationship("Chapter")
+    chapter: Mapped["Chapter"] = relationship("Chapter", single_parent=True, cascade="all, delete-orphan")
     student: Mapped["Student"] = relationship("Student")
 
     def __str__(self):
@@ -85,7 +85,7 @@ class ModuleProgress(Base):
     start_time: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
     end_time: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
 
-    module: Mapped["Module"] = relationship("Module")
+    module: Mapped["Module"] = relationship("Module", single_parent=True, cascade="all, delete-orphan")
     student: Mapped["Student"] = relationship("Student")
 
     def __str__(self):
@@ -101,11 +101,11 @@ class StageProgress(Base):
     start_time: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
     end_time: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
 
-    stage: Mapped["Stage"] = relationship("Stage")
+    stage: Mapped["Stage"] = relationship("Stage", back_populates="stage_progress", single_parent=True, cascade="all, delete-orphan")
     student: Mapped["Student"] = relationship("Student")
 
     def __str__(self):
-        return f"{self.student_id}-{self.stage_id}"
+        return f"student{self.student_id}-stage{self.stage_id}"
 
     def to_dict(self):
         return {

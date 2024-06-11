@@ -23,7 +23,7 @@ class CourseBase(BaseModel):
     title: str = Field(..., max_length=30)
     description: Optional[str]
     category: int
-
+    status_id: int
 class CourseCreate(CourseBase):
     pass
 

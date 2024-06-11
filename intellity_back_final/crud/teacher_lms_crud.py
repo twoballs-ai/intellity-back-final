@@ -52,6 +52,7 @@ def get_course_by_id(db: Session, course_id: int):
 def create_course(db: Session, course: lms_schemas.CourseCreate, user_id: int, cover_image_name: str, cover_path: str):
     db_course = course_editor_lms_models.Course(
         teacher_id=user_id,
+        status_id=course.status_id,
         category=course.category,
         title=course.title,
         description=course.description,

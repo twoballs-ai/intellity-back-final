@@ -70,7 +70,7 @@ def check_enrollment(course_id: int, current_user: User = Depends(get_current_us
     if enrollment:
         return JSONResponse(
             content={
-                "status": "True",
+                "status": True,
                 "data": enrollment.to_dict(),
                 "enrolled_status":"enrolled"
             },
@@ -78,7 +78,14 @@ def check_enrollment(course_id: int, current_user: User = Depends(get_current_us
         )
 
     else:
-        raise HTTPException(status_code=404, detail="Enrollment not found")
+        return JSONResponse(
+            content={
+                "status":False,
+                "enrolled_status":"not enrolled"
+            },
+            status_code=200,
+        )
+
 
 
 @study_course_views.get("/module-stage-list/{module_id}")
@@ -122,7 +129,8 @@ def enroll_student(course_id: int, current_user: User = Depends(get_current_user
         return JSONResponse(
             content={
                 "status": False,
-                "data": "Student is already enrolled in this course"
+                "data": "Student is already enrolled in this course",
+                
             },
             status_code=400,
         )
@@ -132,6 +140,8 @@ def enroll_student(course_id: int, current_user: User = Depends(get_current_user
         content={
             "status": True,
             "data": enroll.to_dict(),
+            "message":"Вы успешно подписались на курс",
+            "enrolled_status":"enrolled"
         },
         status_code=200,
     )
