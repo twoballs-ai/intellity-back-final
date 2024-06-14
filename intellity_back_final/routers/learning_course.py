@@ -103,73 +103,61 @@ def read_chapter(course_id: int, current_user: User = Depends(get_current_user),
         chapter_data['all_modules_completed'] = False
         chapter_data['exam_status'] = {}
 
-        chapter_data['is_locked'] = lock_next_chapters
-
+        # Определение прогресса главы
         if chapter.id in chapter_progress:
             chapter_data['chapter_is_completed'] = chapter_progress[chapter.id].is_completed
 
+        # Обработка экзаменов
         if chapter.is_exam:
             progress = chapter_progress.get(chapter.id)
             if progress:
+                exam_in_progress = not progress.is_completed and progress.start_time is not None
+                exam_completed = progress.is_completed
                 chapter_data['exam_status'] = {
-                    'exam_in_progress': not progress.is_completed and progress.start_time is not None,
+                    'exam_in_progress': exam_in_progress,
                     'exam_start_time': progress.start_time.isoformat() if progress.start_time else None,
-                    'exam_completed': progress.is_completed
+                    'exam_completed': exam_completed
                 }
-                if progress.is_completed:
-                    lock_next_chapters = False
-                else:
-                    lock_next_chapters = True
+                chapter_data['is_locked'] = not exam_in_progress
+                lock_next_chapters = not exam_completed
             else:
                 chapter_data['exam_status'] = {
                     'exam_in_progress': False,
                     'exam_start_time': None,
                     'exam_completed': False
                 }
+                chapter_data['is_locked'] = True
                 lock_next_chapters = True
-
-            # If the exam is in progress but not completed, allow access to the exam chapter
-            if chapter_data['exam_status']['exam_in_progress'] and not chapter_data['exam_status']['exam_completed']:
-                chapter_data['is_locked'] = False
-
-            # If the exam chapter has not been started, send an empty array of modules
-            if not chapter_data['exam_status']['exam_in_progress']:
-                chapter_data['modules'] = []
-            else:
-                chapter_data['modules'] = []
-                for module in chapter.modules:
-                    module_data = module.to_dict()
-                    module_data['is_locked'] = chapter_data.get('is_locked', False)
-                    module_data['is_completed'] = False
-
-                    if not module_data['is_locked']:
-                        if module.id in module_progress:
-                            module_data['is_completed'] = module_progress[module.id].is_completed
-
-                    chapter_data['modules'].append(module_data)
-
-                chapter_data['all_modules_completed'] = all(module['is_completed'] for module in chapter_data['modules'])
-
         else:
-            chapter_data['modules'] = []
-            for module in chapter.modules:
-                module_data = module.to_dict()
-                module_data['is_locked'] = chapter_data.get('is_locked', False)
-                module_data['is_completed'] = False
+            chapter_data['is_locked'] = lock_next_chapters
 
-                if not module_data['is_locked']:
-                    if module.id in module_progress:
-                        module_data['is_completed'] = module_progress[module.id].is_completed
+        # Обработка модулей в главе
+        chapter_data['modules'] = []
+        for module in chapter.modules:
+            module_data = module.to_dict()
+            module_data['is_locked'] = chapter_data['is_locked']
+            module_data['is_completed'] = False
 
-                chapter_data['modules'].append(module_data)
+            if module.id in module_progress:
+                module_data['is_completed'] = module_progress[module.id].is_completed
 
-            chapter_data['all_modules_completed'] = all(module['is_completed'] for module in chapter_data['modules'])
+            chapter_data['modules'].append(module_data)
 
-        # Lock chapters that come after an exam until the exam is completed
-        if lock_next_chapters and not chapter.is_exam:
-            chapter_data['is_locked'] = True
+        chapter_data['all_modules_completed'] = all(module['is_completed'] for module in chapter_data['modules'])
+
+        # Если все модули завершены, разблокировать следующую главу
+        if not chapter.is_exam and chapter_data['all_modules_completed']:
+            lock_next_chapters = False
 
         chapters_with_access.append(chapter_data)
+
+    # Если экзамен завершён, разблокировать все главы и модули
+    exam_completed = any(chapter['exam_status'].get('exam_completed', False) for chapter in chapters_with_access)
+    if exam_completed:
+        for chapter in chapters_with_access:
+            chapter['is_locked'] = False
+            for module in chapter['modules']:
+                module['is_locked'] = False
 
     return {"data": chapters_with_access}
 
