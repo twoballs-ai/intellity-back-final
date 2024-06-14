@@ -49,6 +49,9 @@ def get_db():
     finally:
         db.close()
 
+
+
+
 @study_course_checker_views.get("/check-lessons/{student_id}/{module_id}", response_model=bool)
 def check_lessons_completed(student_id: int, module_id: int, db: Session = Depends(get_db)):
     return are_all_lessons_completed(db, student_id, module_id)

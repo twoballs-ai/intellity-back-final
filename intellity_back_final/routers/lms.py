@@ -32,7 +32,7 @@ from intellity_back_final.routers.user import get_current_user
 from ..database import SessionLocal
 from ..crud import teacher_lms_crud
 from ..schemas import lms_schemas
-from ..models.course_editor_lms_models import Chapter as ChapterModel, ClassicLesson, QuizLesson, VideoLesson
+from ..models.course_editor_lms_models import Chapter as ChapterModel, ClassicLesson, CourseModerationStatus, CourseStatus, QuizLesson, VideoLesson
 import os
 import shutil
 from PIL import Image as PILImage
@@ -330,27 +330,34 @@ async def get_chapter(chapter_id: int, db: Session = Depends(get_db)):
             content={"status": False, "error": str(e)},
             status_code=500,
         )
-
+    
 @lms_views.post("/add_chapter_to_course/")
-async def add_chapter_to_course(data: lms_schemas.AddChapter, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def add_chapter_to_course(
+    data: lms_schemas.AddChapter, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
     try:
-        # Получаем курс по ID
+        # Получение курса
         course = db.query(Course).filter(Course.id == data.course_id).first()
 
         if not course:
             raise HTTPException(status_code=404, detail="Course not found")
 
-        # Проверяем права доступа
+        # Проверка прав доступа
         if course.teacher_id != current_user.id:
             raise HTTPException(status_code=403, detail="You are not the owner of this course")
 
-        # Получаем количество глав для данного course_id
-        chapter_count = db.query(func.count(ChapterModel.id)).filter(ChapterModel.course_id == data.course_id).scalar()
+        # Получение последней главы курса по полю sort_index
+        last_chapter = db.query(ChapterModel).filter(ChapterModel.course_id == data.course_id).order_by(ChapterModel.sort_index.desc()).first()
 
-        # Определяем sort_index
-        sort_index = data.sort_index if data.sort_index is not None else chapter_count + 1
+        # Определение sort_index
+        sort_index = data.sort_index if data.sort_index is not None else (last_chapter.sort_index + 1 if last_chapter else 1)
 
-        # Создаем главу и устанавливаем все поля
+        # Определение previous_chapter_id
+        previous_chapter_id = last_chapter.id if last_chapter else None
+
+        # Создание объекта главы и добавление в базу данных
         chapter_create = ChapterModel(
             course_id=data.course_id,
             title=data.title,
@@ -358,22 +365,21 @@ async def add_chapter_to_course(data: lms_schemas.AddChapter, current_user: User
             sort_index=sort_index,
             is_exam=data.is_exam,
             exam_duration_minutes=data.exam_duration_minutes,
-            previous_chapter_id=data.previous_chapter_id
+            previous_chapter_id=previous_chapter_id
         )
         db.add(chapter_create)
 
-        # Обновляем счетчик глав в курсе
+        # Обновление количества глав в курсе
         course.total_chapters += 1
 
         db.commit()
-        db.refresh(chapter_create)  # Обновляем объект для получения данных после коммита
+        db.refresh(chapter_create)  # Обновление объекта главы
 
         return JSONResponse(
             content={
                 "status": True,
                 "data": chapter_create.to_dict(),
-                "chapter_count": chapter_count + 1,  # Возвращаем количество глав, увеличенное на один
-                "message":"Глава добавлена"
+                "message": "Chapter added"
             },
             status_code=200,
         )
@@ -953,6 +959,37 @@ def get_teacher_courses(current_user: User = Depends(get_current_user),  skip: i
         content={
             "status": True,
             "data": courses_data
+        },
+        status_code=200,
+    )
+
+
+@lms_views.put("/courses/{course_id}/send_for_moderation")
+def send_course_for_moderation(course_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    # Ensure the user is authorized to update the course
+    if course.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this course")
+
+    # Find the draft and awaiting moderation statuses
+    draft_status = db.query(CourseStatus).filter_by(status='Черновик').first()
+    awaiting_moderation_status = db.query(CourseModerationStatus).filter_by(status='Ожидает модерацию').first()
+
+    if not draft_status or not awaiting_moderation_status:
+        raise HTTPException(status_code=400, detail="Draft status or Awaiting Moderation status not found")
+
+    # Update course statuses
+    course.status_id = draft_status.id
+    course.moderation_status_id = awaiting_moderation_status.id
+    db.commit()
+
+    return JSONResponse(
+        content={
+            "status": True,
+            "message": "Курс отправлен на модерацию, это может занять некоторое время"
         },
         status_code=200,
     )

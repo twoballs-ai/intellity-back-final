@@ -55,6 +55,7 @@ class Course(Base):
     category = Column(Integer, ForeignKey("course_category_model.id"))
     teacher_id = Column(Integer, ForeignKey("teacher_model.id", ondelete='CASCADE'))
     status_id = Column(Integer, ForeignKey("course_status_model.id"), nullable=False)
+    moderation_status_id = Column(Integer, ForeignKey("course_moderation_status_model.id"), nullable=True)
     title = Column(String(30), unique=True)
     description = Column(Text)
     course_views_counter = Column(BigInteger, default=0)
@@ -67,6 +68,7 @@ class Course(Base):
     category_model = relationship("CourseCategory", back_populates="courses_model")
     teacher_model = relationship("Teacher", back_populates="courses_model")
     status_model = relationship("CourseStatus", back_populates="courses")
+    modeation_status_model = relationship("CourseModerationStatus", back_populates="courses")
     chapters = relationship("Chapter", back_populates="course", cascade="all, delete-orphan")
     enrollments_model = relationship("CourseEnrollment", back_populates="course_model")
 
@@ -85,7 +87,8 @@ class Course(Base):
             "total_stages": self.total_stages,
             "cover_image_name": self.cover_image_name,
             "cover_path": self.cover_path,
-            "status": self.status_model.status if self.status_model else None,  # Include the status here
+            "status": self.status_model.status if self.status_model else None, 
+            "moderation_status": self.modeation_status_model.status if self.modeation_status_model else None, # Include the status here
             "category": self.category_model.title if self.category else None,
             "teacher": {
                 "name": self.teacher_model.name if self.teacher_model else None,
@@ -93,6 +96,7 @@ class Course(Base):
                 "id": self.teacher_id if self.teacher_id else None,
             },
         }
+    
 
 
 class CourseStatus(Base):
@@ -101,6 +105,16 @@ class CourseStatus(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     status = Column(String, unique=True, nullable=False)
     courses = relationship("Course", back_populates="status_model")
+
+    def __str__(self):
+        return self.status
+    
+class CourseModerationStatus(Base):
+    __tablename__ = "course_moderation_status_model"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    status = Column(String, unique=True, nullable=False)
+    courses = relationship("Course", back_populates="modeation_status_model")
 
     def __str__(self):
         return self.status
@@ -140,15 +154,19 @@ class Chapter(Base):
             "is_exam": self.is_exam,
             "exam_duration_minutes": self.exam_duration_minutes,
             "previous_chapter_id": self.previous_chapter_id,
-            "previous_chapter": self.previous_chapter.to_dict() if self.previous_chapter else None,
+
         }
 
     def can_start(self, student):
         if not self.previous_chapter:
-            return True  # Если нет предыдущей главы, можно начать
-        if self.previous_chapter in student.completed_chapters:
-            return True  # Если предыдущая глава пройдена, можно начать
-        return False
+            return True  # If there is no previous chapter, it's the first chapter, so the student can start it
+        previous_chapter_progress = next((progress for progress in student.chapter_progress if progress.chapter_id == self.previous_chapter.id), None)
+        if not previous_chapter_progress or not previous_chapter_progress.is_completed:
+            return False
+        if self.previous_chapter.is_exam:
+            return previous_chapter_progress.is_completed
+        return True
+
 
 
 class Module(Base):

@@ -65,7 +65,7 @@ class ChapterProgress(Base):
     student_id: Mapped[int] = mapped_column(ForeignKey("student_model.id"))
     chapter_id: Mapped[int] = mapped_column(ForeignKey("chapter_model.id"))
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
-    start_time: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
+    start_time: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     end_time: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
 
     chapter: Mapped["Chapter"] = relationship("Chapter", single_parent=True, cascade="all, delete-orphan")

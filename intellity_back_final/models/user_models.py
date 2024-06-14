@@ -93,7 +93,6 @@ class Student(User):
     stage_progress = relationship("StageProgress", back_populates="student")
     
     enrollments_model = relationship("CourseEnrollment", back_populates="student_model")
-
     __mapper_args__ = {
         'polymorphic_identity': 'student_model',
     }

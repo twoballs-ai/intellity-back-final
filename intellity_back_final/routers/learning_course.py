@@ -31,6 +31,8 @@ import json
 
 from intellity_back_final.models.course_editor_lms_models import Course as CourseModel, CourseCategory, Module, Stage as StageModel,  QuizLesson as QuizLessonModel, Chapter as ChapterModel
 
+# from intellity_back_final.services import ExamService
+
 from ..database import SessionLocal
 from ..crud import teacher_lms_crud
 from ..schemas import lms_schemas
@@ -85,6 +87,91 @@ def check_enrollment(course_id: int, current_user: User = Depends(get_current_us
             },
             status_code=200,
         )
+    
+@study_course_views.get("/learning-course-chapter-list/{course_id}")
+def read_chapter(course_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    chapters = student_lms_crud.get_course_chapters(db, course_id=course_id)
+    chapter_progress = {cp.chapter_id: cp for cp in current_user.chapter_progress}
+    module_progress = {mp.module_id: mp for mp in current_user.module_progress}
+
+    chapters_with_access = []
+    lock_next_chapters = False
+
+    for chapter in chapters:
+        chapter_data = chapter.to_dict()
+        chapter_data['chapter_is_completed'] = False
+        chapter_data['all_modules_completed'] = False
+        chapter_data['exam_status'] = {}
+
+        chapter_data['is_locked'] = lock_next_chapters
+
+        if chapter.id in chapter_progress:
+            chapter_data['chapter_is_completed'] = chapter_progress[chapter.id].is_completed
+
+        if chapter.is_exam:
+            progress = chapter_progress.get(chapter.id)
+            if progress:
+                chapter_data['exam_status'] = {
+                    'exam_in_progress': not progress.is_completed and progress.start_time is not None,
+                    'exam_start_time': progress.start_time.isoformat() if progress.start_time else None,
+                    'exam_completed': progress.is_completed
+                }
+                if progress.is_completed:
+                    lock_next_chapters = False
+                else:
+                    lock_next_chapters = True
+            else:
+                chapter_data['exam_status'] = {
+                    'exam_in_progress': False,
+                    'exam_start_time': None,
+                    'exam_completed': False
+                }
+                lock_next_chapters = True
+
+            # If the exam is in progress but not completed, allow access to the exam chapter
+            if chapter_data['exam_status']['exam_in_progress'] and not chapter_data['exam_status']['exam_completed']:
+                chapter_data['is_locked'] = False
+
+            # If the exam chapter has not been started, send an empty array of modules
+            if not chapter_data['exam_status']['exam_in_progress']:
+                chapter_data['modules'] = []
+            else:
+                chapter_data['modules'] = []
+                for module in chapter.modules:
+                    module_data = module.to_dict()
+                    module_data['is_locked'] = chapter_data.get('is_locked', False)
+                    module_data['is_completed'] = False
+
+                    if not module_data['is_locked']:
+                        if module.id in module_progress:
+                            module_data['is_completed'] = module_progress[module.id].is_completed
+
+                    chapter_data['modules'].append(module_data)
+
+                chapter_data['all_modules_completed'] = all(module['is_completed'] for module in chapter_data['modules'])
+
+        else:
+            chapter_data['modules'] = []
+            for module in chapter.modules:
+                module_data = module.to_dict()
+                module_data['is_locked'] = chapter_data.get('is_locked', False)
+                module_data['is_completed'] = False
+
+                if not module_data['is_locked']:
+                    if module.id in module_progress:
+                        module_data['is_completed'] = module_progress[module.id].is_completed
+
+                chapter_data['modules'].append(module_data)
+
+            chapter_data['all_modules_completed'] = all(module['is_completed'] for module in chapter_data['modules'])
+
+        # Lock chapters that come after an exam until the exam is completed
+        if lock_next_chapters and not chapter.is_exam:
+            chapter_data['is_locked'] = True
+
+        chapters_with_access.append(chapter_data)
+
+    return {"data": chapters_with_access}
 
 
 
@@ -256,3 +343,41 @@ def check_quiz_answers(stage_id: int, answers: List[int], db: Session = Depends(
         )
 
 
+@study_course_views.post("/start_exam/{chapter_id}")
+def start_exam(chapter_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Fetch the chapter progress for the current user and the given chapter ID
+    chapter_progress = db.query(ChapterProgress).filter_by(
+        student_id=current_user.id,
+        chapter_id=chapter_id
+    ).first()
+
+    if not chapter_progress:
+        raise HTTPException(status_code=404, detail="Chapter progress not found")
+
+    # Update the start_time to the current datetime
+    chapter_progress.start_time = datetime.utcnow()
+
+    # Commit the changes to the database
+    db.commit()
+
+    # Convert datetime to string for JSON serialization
+    start_time_str = chapter_progress.start_time.isoformat()
+
+    # Return JSON response with serialized datetime
+    return JSONResponse(
+        content={
+            "status": True,
+            "message": "Exam started successfully",
+            "start_time": start_time_str
+        },
+        status_code=200,
+    )
+
+
+# @study_course_views.post("/submit_exam/{chapter_id}")
+# def submit_exam(chapter_id: int, answers: List[schemas.Answer], db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+#     return ExamService.submit_exam(chapter_id, current_user.id, answers, db)
+
+# @study_course_views.post("/complete_exam/{chapter_id}")
+# def complete_exam(chapter_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+#     return ExamService.complete_exam(chapter_id, current_user.id, db)
