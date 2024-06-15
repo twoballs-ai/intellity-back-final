@@ -3,6 +3,9 @@ version: '3.8'
 services:
   app:
     build: .
+    restart: always
+    ports:
+      - "8000:8000"
     volumes:
       - .:/app
     environment:
