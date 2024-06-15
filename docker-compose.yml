@@ -3,12 +3,24 @@ version: '3.8'
 services:
   app:
     build: .
-    ports:
-      - "8000:8000"
     volumes:
       - .:/app
     environment:
       - SQLALCHEMY_DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@95.163.222.197:5432/intellity_db
+    networks:
+      - intellity_network
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - /etc/letsencrypt:/etc/letsencrypt
+      - /etc/ssl/certs/dhparam.pem:/etc/ssl/certs/dhparam.pem
+    depends_on:
+      - app
     networks:
       - intellity_network
 
