@@ -26,12 +26,13 @@ import json
 from intellity_back_final.models.course_editor_lms_models import Course, CourseCategory, Module, Stage as StageModel, Answer as AnswerModel, QuizLesson as QuizLessonModel
 import logging
 
+from intellity_back_final.models.course_study_lms_models import CourseEnrollment
 from intellity_back_final.models.user_models import User
 from intellity_back_final.routers.user import get_current_user
 from ..database import SessionLocal
 from ..crud import teacher_lms_crud
 from ..schemas import lms_schemas
-from ..models.course_editor_lms_models import Chapter as ChapterModel, ClassicLesson, QuizLesson, VideoLesson
+from ..models.course_editor_lms_models import Chapter as ChapterModel, ClassicLesson, CourseModerationStatus, CourseStatus, QuizLesson, VideoLesson
 import os
 import shutil
 from PIL import Image as PILImage
@@ -92,38 +93,44 @@ def read_courses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db))
 
 
 @lms_views.get("/course/")
-def read_courses(course_id:int, db: Session = Depends(get_db)):
+def read_courses(course_id: int, current_user: User = Depends(get_current_user),  db: Session = Depends(get_db)):
+    course = teacher_lms_crud.get_course_by_id(db, course_id=course_id)
+    if not course:
+        return JSONResponse(
+            content={"status": False, "message": "Course not found"},
+            status_code=404,
+        )
+    if course.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You are not the owner of this course")
     
-    course = teacher_lms_crud.get_get_course_by_id(db,course_id=course_id,)
-    chapters=db.query().filter(ChapterModel.course_id == course_id).all()
-    print(chapters)
-    data=[]
-    chapters = [
+    chapters = db.query(ChapterModel).filter(ChapterModel.course_id == course_id).all()
+    chapters_data = [
         {
-            "id": category.id,
-            "title": category.title,
-            "description": category.description,
-
+            "id": chapter.id,
+            "title": chapter.title,
+            "description": chapter.description,
         }
-        for category in chapters
+        for chapter in chapters
     ]
-    data.append(course_id)
-    data.append(chapters)
+
+    data = {
+        "course": course.to_dict(),
+        "chapters": chapters_data
+    }
+
     return JSONResponse(
-        content={
-            "status": True,
-            "chapters": chapters,
-        },
+        content={"status": True, "data": data},
         status_code=200,
     )
 
 
-@lms_views.post("/course/", response_model=lms_schemas.Course)
+
+@lms_views.post("/course/")
 def create_course_category(
-    title: str = Form(..., max_length=30), 
-    description: str = Form(None), 
-    category: int = Form(...), 
-    current_user: User = Depends(get_current_user), 
+    title: str = Form(..., max_length=30),
+    description: str = Form(None),
+    category: int = Form(...),
+    current_user: User = Depends(get_current_user),
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
@@ -142,19 +149,22 @@ def create_course_category(
     if search_course:
         raise HTTPException(status_code=400, detail="Course already exists")
 
+    # Set default status_id if not provided
+    default_status_id = 1
+
     course_create = teacher_lms_crud.create_course(
-        db=db, 
-        course=lms_schemas.CourseCreate(title=title, description=description, category=category), 
-        user_id=current_user.id, 
-        cover_image_name=file.filename, 
+        db=db,
+        course=lms_schemas.CourseCreate(title=title, description=description, category=category, status_id=default_status_id),
+        user_id=current_user.id,
+        cover_image_name=file.filename,
         cover_path=""
     )
     if not course_create:
         raise HTTPException(status_code=404, detail="Course not found")
-    
+
     course_id = course_create.id
     course_title = course_create.title
-    course_directory_name = f"{course_id}_{course_title.replace(' ', '_')}"
+    course_directory_name = f"{course_id}_{current_user.id}"
     course_directory_path = os.path.join(UPLOAD_DIRECTORY, course_directory_name)
     covers_directory_path = os.path.join(course_directory_path, "covers")
     media_directory_path = os.path.join(course_directory_path, "media")
@@ -172,9 +182,76 @@ def create_course_category(
     db.commit()
     db.refresh(course_create)
 
-    return course_create
+    return JSONResponse(
+        content={
+            "status": True,
+            "data": course_create.to_dict(),
+            "message": "Вы добавили курс"
+        },
+        status_code=200,
+    )
 
+@lms_views.put("/course/{course_id}")
+def update_course(
+    course_id: int,
+    title: str = Form(..., max_length=30), 
+    description: str = Form(None), 
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    if file.content_type not in ["image/jpeg", "image/png"]:
+        raise HTTPException(status_code=400, detail="Invalid file type. Only JPEG and PNG files are allowed.")
 
+    # Verify the image
+    try:
+        with PILImage.open(file.file) as img:
+            img.verify()
+            file.file.seek(0)  # Reset file pointer to beginning after verify
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image file.")
+
+    course = teacher_lms_crud.get_course_by_id(db, course_id=course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    # Check if the current user owns the course or has permission to edit it
+    if course.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this course")
+
+    # Update course fields
+    course.title = title
+    course.description = description
+    course.cover_image_name=file.filename,
+    # Update cover image
+    course_directory_name = f"{course_id}_{course.teacher_id}"
+    course_directory_path = os.path.join(UPLOAD_DIRECTORY, course_directory_name)
+    covers_directory_path = os.path.join(course_directory_path, "covers")
+
+    os.makedirs(covers_directory_path, exist_ok=True)
+
+    file_location = os.path.join(covers_directory_path, file.filename)
+
+    # Delete the old cover image if it exists
+    if course.cover_path and os.path.exists(course.cover_path):
+        os.remove(course.cover_path)
+
+    with open(file_location, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    course.cover_path = file_location
+
+    db.commit()
+    db.refresh(course)
+
+    return JSONResponse(
+        content={
+            "status": True,
+            "data": course.to_dict(),
+            "message": "Курс обновлен"
+        },
+        status_code=200,
+    )
 @lms_views.delete("/delete-course/{course_id}")
 def delete_course(course_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     course = db.query(Course).filter(Course.id == course_id).first()
@@ -185,16 +262,21 @@ def delete_course(course_id: int, current_user: User = Depends(get_current_user)
     if course.teacher_id != current_user.id:
         raise HTTPException(status_code=403, detail="You are not the owner of this course")
     
+    # Delete associated enrollments
+    db.query(CourseEnrollment).filter(CourseEnrollment.course_id == course_id).delete()
+    
+    # Delete the course
     db.delete(course)
     db.commit()
     
     return JSONResponse(
         content={
             "status": True,
-            "text_for_budges": "Course deleted successfully."
+            "message": "Course deleted successfully."
         },
         status_code=200,
     )
+
 
 
 @lms_views.get("/course-chapter-list/{course_id}")
@@ -248,27 +330,34 @@ async def get_chapter(chapter_id: int, db: Session = Depends(get_db)):
             content={"status": False, "error": str(e)},
             status_code=500,
         )
-
+    
 @lms_views.post("/add_chapter_to_course/")
-async def add_chapter_to_course(data: lms_schemas.AddChapter, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def add_chapter_to_course(
+    data: lms_schemas.AddChapter, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
     try:
-        # Получаем курс по ID
+        # Получение курса
         course = db.query(Course).filter(Course.id == data.course_id).first()
 
         if not course:
             raise HTTPException(status_code=404, detail="Course not found")
 
-        # Проверяем права доступа
+        # Проверка прав доступа
         if course.teacher_id != current_user.id:
             raise HTTPException(status_code=403, detail="You are not the owner of this course")
 
-        # Получаем количество глав для данного course_id
-        chapter_count = db.query(func.count(ChapterModel.id)).filter(ChapterModel.course_id == data.course_id).scalar()
+        # Получение последней главы курса по полю sort_index
+        last_chapter = db.query(ChapterModel).filter(ChapterModel.course_id == data.course_id).order_by(ChapterModel.sort_index.desc()).first()
 
-        # Определяем sort_index
-        sort_index = data.sort_index if data.sort_index is not None else chapter_count + 1
+        # Определение sort_index
+        sort_index = data.sort_index if data.sort_index is not None else (last_chapter.sort_index + 1 if last_chapter else 1)
 
-        # Создаем главу и устанавливаем все поля
+        # Определение previous_chapter_id
+        previous_chapter_id = last_chapter.id if last_chapter else None
+
+        # Создание объекта главы и добавление в базу данных
         chapter_create = ChapterModel(
             course_id=data.course_id,
             title=data.title,
@@ -276,22 +365,18 @@ async def add_chapter_to_course(data: lms_schemas.AddChapter, current_user: User
             sort_index=sort_index,
             is_exam=data.is_exam,
             exam_duration_minutes=data.exam_duration_minutes,
-            previous_chapter_id=data.previous_chapter_id
+            previous_chapter_id=previous_chapter_id
         )
         db.add(chapter_create)
 
-        # Обновляем счетчик глав в курсе
-        course.total_chapters += 1
-
         db.commit()
-        db.refresh(chapter_create)  # Обновляем объект для получения данных после коммита
+        db.refresh(chapter_create)  # Обновление объекта главы
 
         return JSONResponse(
             content={
                 "status": True,
                 "data": chapter_create.to_dict(),
-                "chapter_count": chapter_count + 1,  # Возвращаем количество глав, увеличенное на один
-                "message":"Глава добавлена"
+                "message": "Chapter added"
             },
             status_code=200,
         )
@@ -370,18 +455,10 @@ async def delete_chapter(chapter_id: int, current_user: User = Depends(get_curre
         if course.teacher_id != current_user.id:
             raise HTTPException(status_code=403, detail="You are not the owner of this course")
 
-        # Считаем количество модулей и этапов, которые будут удалены
-        total_modules = db.query(Module).filter(Module.chapter_id == chapter_id).count()
-        total_stages = db.query(StageModel).join(Module).filter(Module.chapter_id == chapter_id).count()
-
         # Удаляем главу
         db.delete(chapter)
 
-        # Обновляем количество глав, модулей и этапов в курсе
-        course.total_chapters -= 1
-        course.total_modules -= total_modules
-        course.total_stages -= total_stages
-
+ 
         # Сохраняем изменения в базе данных
         db.commit()
 
@@ -427,9 +504,6 @@ def add_module_to_chapter(data: lms_schemas.AddModule, current_user: User = Depe
         )
         db.add(module_create)
 
-        # Обновляем счетчики
-        chapter.total_modules_in_chapter += 1
-        course.total_modules += 1
 
         # Сохраняем изменения в базе данных
         db.commit()
@@ -568,12 +642,6 @@ def delete_module(module_id: int, current_user: User = Depends(get_current_user)
         # Удаляем модуль
         db.delete(module)
 
-        # Обновляем количество модулей и этапов в главе и курсе
-        chapter.total_modules_in_chapter -= 1
-        chapter.total_stages_in_chapter -= total_stages
-        course.total_modules -= 1
-        course.total_stages -= total_stages
-
         # Сохраняем изменения в базе данных
         db.commit()
 
@@ -610,27 +678,13 @@ async def create_and_associate_classic_lesson_route(data: lms_schemas.ClassicLes
             raise HTTPException(status_code=403, detail="You are not the owner of this course")
 
         new_classic_lesson = teacher_lms_crud.create_and_associate_classic_lesson(db, data)
-        
-        module.total_stages_in_module += 1
-        chapter.total_stages_in_chapter += 1
-        course.total_stages += 1
+    
 
-        db.commit()
-
-        return {"message": "Classic lesson created and associated with stage successfully", "data": new_classic_lesson}
+        return {"message": "Вы успешно добавили классический урок", "data": new_classic_lesson}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
-@lms_views.put("/update/classic_lesson/")
-async def update_classic_lesson(data: lms_schemas.ClassicLessonUpdate, db: Session = Depends(get_db)):
-    try:
-        
-        classic_lesson = teacher_lms_crud.update_classic_lesson(db, data)
-        return {"message": "Classic lesson updated successfully", "data": classic_lesson}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @lms_views.put("/update/classic_lesson/")
 async def update_classic_lesson(data: lms_schemas.ClassicLessonUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -660,7 +714,7 @@ async def update_classic_lesson(data: lms_schemas.ClassicLessonUpdate, current_u
         if course.teacher_id != current_user.id:
             raise HTTPException(status_code=403, detail="You are not the owner of this course")
         classic_lesson = teacher_lms_crud.update_classic_lesson(db, data)
-        return {"message": "Classic lesson updated successfully", "data": classic_lesson}
+        return {"message": "Данные успешно обновлены", "data": classic_lesson}
     except HTTPException as e:
         raise e
     except Exception as e:
@@ -686,13 +740,9 @@ async def create_and_associate_video_lesson_route(data: lms_schemas.VideoLesson,
 
         new_video_lesson = teacher_lms_crud.create_and_associate_video_lesson(db, data)
 
-        module.total_stages_in_module += 1
-        chapter.total_stages_in_chapter += 1
-        course.total_stages += 1
 
-        db.commit()
 
-        return {"message": "Video lesson created and associated with stage successfully", "data": new_video_lesson}
+        return {"message": "Вы успешно добавили видео урок", "data": new_video_lesson}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -752,13 +802,8 @@ async def create_quiz_route(quiz: lms_schemas.QuizCreate, current_user: User = D
 
         new_quiz = teacher_lms_crud.create_quiz(db=db, quiz=quiz)
 
-        module.total_stages_in_module += 1
-        chapter.total_stages_in_chapter += 1
-        course.total_stages += 1
 
-        db.commit()
-
-        return {"message": "Quiz created successfully", "data": new_quiz}
+        return {"message": "Вы успешно добавили квиз", "data": new_quiz}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -813,6 +858,7 @@ async def update_quiz_route(data: lms_schemas.QuizUpdate, current_user: User = D
 async def delete_stage(stage_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         stage = db.query(StageModel).filter(StageModel.id == stage_id).first()
+        
         if not stage:
             raise HTTPException(status_code=404, detail="Stage not found")
 
@@ -830,19 +876,13 @@ async def delete_stage(stage_id: int, current_user: User = Depends(get_current_u
 
         if course.teacher_id != current_user.id:
             raise HTTPException(status_code=403, detail="You are not the owner of this course")
-
         db.delete(stage)
-
-        module.total_stages_in_module -= 1
-        chapter.total_stages_in_chapter -= 1
-        course.total_stages -= 1
-
         db.commit()
 
-        return JSONResponse(content={"status": True, "text_for_budges": "Stage deleted successfully."}, status_code=200)
+        return JSONResponse(content={"status": True, "message": "Stage deleted successfully."}, status_code=200)
     except Exception as e:
         return JSONResponse(
-            content={"status": False, "error": str(e)},
+            content={"status": False, "message": str(e)},
             status_code=500,
         )
 @lms_views.get("/stage/{stage_id}")
@@ -869,9 +909,48 @@ def read_stage(stage_id: int, current_user: User = Depends(get_current_user), db
 
     return stage.to_dict()
 
-@lms_views.get("/teacher-courses/", response_model=List[lms_schemas.Course])
+@lms_views.get("/teacher-courses/")
 def get_teacher_courses(current_user: User = Depends(get_current_user),  skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     # Получение курсов для указанного преподавателя из базы данных, используя идентификатор пользователя
 
     courses = teacher_lms_crud.get_teacher_courses(db, teacher_id=current_user.id, skip=skip, limit=limit)
-    return courses
+    courses_data = [course.to_dict() for course in courses]
+    
+    return JSONResponse(
+        content={
+            "status": True,
+            "data": courses_data
+        },
+        status_code=200,
+    )
+
+
+@lms_views.put("/courses/{course_id}/send_for_moderation")
+def send_course_for_moderation(course_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    # Ensure the user is authorized to update the course
+    if course.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this course")
+
+    # Find the draft and awaiting moderation statuses
+    draft_status = db.query(CourseStatus).filter_by(status='Черновик').first()
+    awaiting_moderation_status = db.query(CourseModerationStatus).filter_by(status='Ожидает модерацию').first()
+
+    if not draft_status or not awaiting_moderation_status:
+        raise HTTPException(status_code=400, detail="Draft status or Awaiting Moderation status not found")
+
+    # Update course statuses
+    course.status_id = draft_status.id
+    course.moderation_status_id = awaiting_moderation_status.id
+    db.commit()
+
+    return JSONResponse(
+        content={
+            "status": True,
+            "message": "Курс отправлен на модерацию, это может занять некоторое время"
+        },
+        status_code=200,
+    )

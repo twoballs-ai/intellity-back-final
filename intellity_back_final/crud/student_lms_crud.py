@@ -20,6 +20,7 @@ def get_course_enrollment(db: Session, student_id: int, course_id: int):
     ).first()
 
 def enroll_student_in_course(db: Session, student_id: int, course_id: int):
+    # Создаем объект CourseEnrollment для записи подписки студента на курс
     enrollment = CourseEnrollment(
         student_id=student_id,
         course_id=course_id,
@@ -27,9 +28,18 @@ def enroll_student_in_course(db: Session, student_id: int, course_id: int):
         progress=0.0,
         is_completed=False
     )
-    db.add(enrollment)
-    db.commit()
-    db.refresh(enrollment)
+    
+    # Обновляем счетчик подписок для курса
+    course = db.query(course_editor_lms_models.Course).filter(course_editor_lms_models.Course.id == course_id).first()
+    if course:
+        course.subscription_counter += 1
+        db.add(enrollment)
+        db.commit()
+        db.refresh(enrollment)
+    else:
+        # В случае, если курс не найден, выбрасываем исключение или выполняем другие действия
+        raise HTTPException(status_code=404, detail="Course not found")
+    
     return enrollment
 
 def update_chapter_progress(db: Session, student_id: int, chapter_id: int, is_completed: bool):
@@ -70,6 +80,7 @@ def update_module_progress(db: Session, student_id: int, module_id: int, is_comp
 
 def update_stage_progress(db: Session, student_id: int, stage_id: int, is_completed: bool):
     progress = db.query(StageProgress).filter_by(student_id=student_id, stage_id=stage_id).first()
+
     if not progress:
         progress = StageProgress(
             student_id=student_id,
@@ -79,10 +90,13 @@ def update_stage_progress(db: Session, student_id: int, stage_id: int, is_comple
             end_time=datetime.utcnow() if is_completed else None
         )
         db.add(progress)
+
     else:
         progress.is_completed = is_completed
         progress.end_time = datetime.utcnow() if is_completed else None
+
     db.commit()
+
     db.refresh(progress)
     return progress
 
@@ -107,3 +121,6 @@ def get_course_chapter_module_stages(db: Session, module_id: int, user_id: int, 
             list_items.append(stage_dict)
 
         return list_items
+    
+def get_course_chapters(db: Session, course_id: int):
+    return db.query(course_editor_lms_models.Chapter).filter(course_editor_lms_models.Chapter.course_id == course_id).order_by(course_editor_lms_models.Chapter.sort_index).all()

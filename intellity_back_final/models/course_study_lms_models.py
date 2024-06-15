@@ -65,15 +65,14 @@ class ChapterProgress(Base):
     student_id: Mapped[int] = mapped_column(ForeignKey("student_model.id"))
     chapter_id: Mapped[int] = mapped_column(ForeignKey("chapter_model.id"))
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
-    start_time: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
+    start_time: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     end_time: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
 
-    chapter: Mapped["Chapter"] = relationship("Chapter")
+    chapter: Mapped["Chapter"] = relationship("Chapter", single_parent=True, cascade="all, delete-orphan")
     student: Mapped["Student"] = relationship("Student")
-
+    
     def __str__(self):
         return f"{self.student_id}-{self.chapter_id}"
-    
     
     
 class ModuleProgress(Base):
@@ -86,12 +85,11 @@ class ModuleProgress(Base):
     start_time: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
     end_time: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
 
-    module: Mapped["Module"] = relationship("Module")
+    module: Mapped["Module"] = relationship("Module", single_parent=True, cascade="all, delete-orphan")
     student: Mapped["Student"] = relationship("Student")
 
     def __str__(self):
         return f"{self.student_id}-{self.module_id}"
-
 
 class StageProgress(Base):
     __tablename__ = "stage_progress"
@@ -103,11 +101,11 @@ class StageProgress(Base):
     start_time: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
     end_time: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
 
-    stage: Mapped["Stage"] = relationship("Stage")
+    stage: Mapped["Stage"] = relationship("Stage", back_populates="stage_progress", single_parent=True, cascade="all, delete-orphan")
     student: Mapped["Student"] = relationship("Student")
 
     def __str__(self):
-        return f"{self.student_id}-{self.stage_id}"
+        return f"student{self.student_id}-stage{self.stage_id}"
 
     def to_dict(self):
         return {
@@ -117,6 +115,4 @@ class StageProgress(Base):
             "is_completed": self.is_completed,
             "start_time": self.start_time.isoformat() if self.start_time else None,
             "end_time": self.end_time.isoformat() if self.end_time else None,
-            # "stage": self.stage.to_dict() if self.stage else None,
-            # "student": self.student.to_dict() if self.student else None,
         }

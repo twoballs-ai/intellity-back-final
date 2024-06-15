@@ -23,7 +23,7 @@ class CourseBase(BaseModel):
     title: str = Field(..., max_length=30)
     description: Optional[str]
     category: int
-
+    status_id: int
 class CourseCreate(CourseBase):
     pass
 
@@ -33,6 +33,7 @@ class Course(CourseBase):
     subscription_counter: int
     cover_image_name: Optional[str] = None
     cover_path: Optional[str] = None
+    status: str
 
     class Config:
         orm_mode = True  

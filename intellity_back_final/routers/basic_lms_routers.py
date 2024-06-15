@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from datetime import datetime
-from intellity_back_final.crud.basic_lms_crud import get_recent_courses
+from intellity_back_final.crud.basic_lms_crud import get_courses_by_cat, get_recent_courses
 from intellity_back_final.crud.checker_course_lms_crud import are_all_chapters_completed, are_all_lessons_completed, are_all_modules_completed, is_course_completed
 from intellity_back_final.crud.student_lms_crud import enroll_student_in_course, update_chapter_progress, update_module_progress, update_stage_progress
 from intellity_back_final.models.course_study_lms_models import CourseEnrollment, ChapterProgress, ModuleProgress, StageProgress
@@ -123,6 +123,19 @@ def read_recent_courses(
         content={
             "status": True,
             "data": courses_as_dicts,
+        },
+        status_code=200,
+    )
+
+
+@basic_handle_views.get("/courses-by-cat/")
+def read_courses(skip: int = 0, limit: int = 100, category_id: Optional[int] = None, db: Session = Depends(get_db)):
+    courses = get_courses_by_cat(db, skip=skip, limit=limit, category_id=category_id)
+    list_courses =[course.to_dict() for course in courses]
+    return JSONResponse(
+        content={
+            "status": True,
+            "data": list_courses,
         },
         status_code=200,
     )

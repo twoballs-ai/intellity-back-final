@@ -25,7 +25,7 @@ from intellity_back_final.models.course_editor_lms_models import Course, CourseC
 from intellity_back_final.models.user_models import User
 from ..database import SessionLocal
 from ..crud import user_crud
-from ..schemas import lms_schemas
+from ..schemas import user_schemas
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -116,14 +116,39 @@ def get_current_user_view(current_user: User = Depends(get_current_user)):
 
 @user_views.post("/teacher-register/")
 def create_teacher_view(teacher: TeacherCreate, db: Session = Depends(get_db)):
-    teacher = user_crud.create_teacher(db=db, name=teacher.name, lastName=teacher.lastName, email=teacher.email, password=teacher.password, qualification=teacher.qualification, skills=teacher.skills)
-    return teacher
+    try:
+        teacher = user_crud.create_teacher(db=db, name=teacher.name, lastName=teacher.lastName, email=teacher.email, password=teacher.password, qualification=teacher.qualification, skills=teacher.skills)
+        return JSONResponse(
+            content={
+                    "status": True,
+                    "data": teacher.to_dict(),
+                    "message":"Вы зарегестрированы как учитель"
+                },
+                status_code=200,
+            )
+    except Exception as e:
+        return JSONResponse(
+            content={"status": False, "error": str(e)},
+            status_code=500,
+        )
 
 @user_views.post("/student-register/")
 def create_student_view(student: StudentCreate, db: Session = Depends(get_db)):
-    student = user_crud.create_student(db=db, email=student.email, password=student.password, interested_categories=student.interested_categories)
-    return student
-
+    try:
+        student = user_crud.create_student(db=db, email=student.email, password=student.password, interested_categories=student.interested_categories)
+        return JSONResponse(
+            content={
+                    "status": True,
+                    "data": student.to_dict(),
+                    "message":"Вы зарегестрированы как студент"
+                },
+                status_code=200,
+            )
+    except Exception as e:
+        return JSONResponse(
+            content={"status": False, "error": str(e)},
+            status_code=500,
+        )
 @user_views.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(form_data.username, form_data.password, db)
@@ -170,3 +195,79 @@ async def refresh_access_token(refresh_token: str = Form(...)):
     )
 
     return {"access_token": access_token, "token_type": "Bearer"}
+
+@user_views.get("/teacher-profile")
+def get_teacher_info(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Get the teacher associated with the current user
+    teacher = user_crud.get_teacher_by_user_id(db, current_user.id)
+    if teacher is None:
+        raise HTTPException(status_code=404, detail="Teacher not found")
+    # Return a dictionary containing name, last name, and qualification
+    return JSONResponse(
+        content={
+                    "status": True,
+                    "data": {"name": teacher.name, "last_name": teacher.lastName, "qualification": teacher.qualification},
+                },
+                status_code=200,
+            )
+
+
+@user_views.put("/teacher-profile-update")
+def update_teacher_info(
+    profile: user_schemas.UpdateTeacherInfo,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Get the teacher associated with the current user
+    teacher = user_crud.get_teacher_by_user_id(db, current_user.id)
+    if teacher is None:
+        raise HTTPException(status_code=404, detail="Teacher not found")
+    
+    # Update the teacher's information
+    teacher.name = profile.name
+    teacher.lastName = profile.last_name
+    teacher.qualification = profile.qualification
+    
+    db.commit()
+    db.refresh(teacher)
+    
+    # Return a success message
+    return JSONResponse(
+        content={
+            "status": True,
+            "message": "Profile updated successfully",
+            "data": {
+                "name": teacher.name,
+                "last_name": teacher.lastName,
+                "qualification": teacher.qualification
+            },
+        },
+        status_code=200,
+    )
+
+
+@user_views.put("/reset-password")
+def reset_password(
+    request: user_schemas.PasswordResetRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not bcrypt.checkpw(request.old_password.encode('utf-8'), user.password_hash.encode('utf-8')):
+        raise HTTPException(status_code=400, detail="Old password is incorrect")
+
+    new_password_hash = User.create_password_hash(request.new_password)
+    user.password_hash = new_password_hash
+
+    db.commit()
+    db.refresh(user)
+    return JSONResponse(
+        content={
+            "status": True,
+            "message": "Password reset successful"
+        },
+        status_code=200,
+    )
