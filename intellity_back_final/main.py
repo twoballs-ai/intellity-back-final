@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from .auth import oauth2_scheme
 import intellity_back_final.handlers  # Импортируем для регистрации обработчиков событий
 
+from fastapi.responses import FileResponse
 
 
 app = FastAPI()
@@ -50,6 +51,9 @@ app.mount("/uploaded_directory", StaticFiles(directory="uploaded_directory"), na
 
 
 
+@app.get("/sitemap.xml", response_class=FileResponse)
+async def sitemap():
+    return "sitemap.xml"
 
 
 app.include_router(user_views, prefix="/api/v1/user", tags=["основной функционал для работы с пользователями"])

@@ -70,7 +70,7 @@ class ChapterProgress(Base):
 
     chapter: Mapped["Chapter"] = relationship("Chapter", single_parent=True, cascade="all, delete-orphan")
     student: Mapped["Student"] = relationship("Student")
-
+    
     def __str__(self):
         return f"{self.student_id}-{self.chapter_id}"
     

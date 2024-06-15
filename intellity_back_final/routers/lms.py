@@ -369,9 +369,6 @@ async def add_chapter_to_course(
         )
         db.add(chapter_create)
 
-        # Обновление количества глав в курсе
-        course.total_chapters += 1
-
         db.commit()
         db.refresh(chapter_create)  # Обновление объекта главы
 
@@ -458,18 +455,10 @@ async def delete_chapter(chapter_id: int, current_user: User = Depends(get_curre
         if course.teacher_id != current_user.id:
             raise HTTPException(status_code=403, detail="You are not the owner of this course")
 
-        # Считаем количество модулей и этапов, которые будут удалены
-        total_modules = db.query(Module).filter(Module.chapter_id == chapter_id).count()
-        total_stages = db.query(StageModel).join(Module).filter(Module.chapter_id == chapter_id).count()
-
         # Удаляем главу
         db.delete(chapter)
 
-        # Обновляем количество глав, модулей и этапов в курсе
-        course.total_chapters -= 1
-        course.total_modules -= total_modules
-        course.total_stages -= total_stages
-
+ 
         # Сохраняем изменения в базе данных
         db.commit()
 
@@ -515,9 +504,6 @@ def add_module_to_chapter(data: lms_schemas.AddModule, current_user: User = Depe
         )
         db.add(module_create)
 
-        # Обновляем счетчики
-        chapter.total_modules_in_chapter += 1
-        course.total_modules += 1
 
         # Сохраняем изменения в базе данных
         db.commit()
@@ -656,12 +642,6 @@ def delete_module(module_id: int, current_user: User = Depends(get_current_user)
         # Удаляем модуль
         db.delete(module)
 
-        # Обновляем количество модулей и этапов в главе и курсе
-        chapter.total_modules_in_chapter -= 1
-        chapter.total_stages_in_chapter -= total_stages
-        course.total_modules -= 1
-        course.total_stages -= total_stages
-
         # Сохраняем изменения в базе данных
         db.commit()
 
@@ -698,12 +678,7 @@ async def create_and_associate_classic_lesson_route(data: lms_schemas.ClassicLes
             raise HTTPException(status_code=403, detail="You are not the owner of this course")
 
         new_classic_lesson = teacher_lms_crud.create_and_associate_classic_lesson(db, data)
-        
-        module.total_stages_in_module += 1
-        chapter.total_stages_in_chapter += 1
-        course.total_stages += 1
-
-        db.commit()
+    
 
         return {"message": "Вы успешно добавили классический урок", "data": new_classic_lesson}
     except Exception as e:
@@ -765,11 +740,7 @@ async def create_and_associate_video_lesson_route(data: lms_schemas.VideoLesson,
 
         new_video_lesson = teacher_lms_crud.create_and_associate_video_lesson(db, data)
 
-        module.total_stages_in_module += 1
-        chapter.total_stages_in_chapter += 1
-        course.total_stages += 1
 
-        db.commit()
 
         return {"message": "Вы успешно добавили видео урок", "data": new_video_lesson}
     except Exception as e:
@@ -831,11 +802,6 @@ async def create_quiz_route(quiz: lms_schemas.QuizCreate, current_user: User = D
 
         new_quiz = teacher_lms_crud.create_quiz(db=db, quiz=quiz)
 
-        module.total_stages_in_module += 1
-        chapter.total_stages_in_chapter += 1
-        course.total_stages += 1
-
-        db.commit()
 
         return {"message": "Вы успешно добавили квиз", "data": new_quiz}
     except Exception as e:
@@ -892,6 +858,7 @@ async def update_quiz_route(data: lms_schemas.QuizUpdate, current_user: User = D
 async def delete_stage(stage_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         stage = db.query(StageModel).filter(StageModel.id == stage_id).first()
+        
         if not stage:
             raise HTTPException(status_code=404, detail="Stage not found")
 
@@ -909,19 +876,13 @@ async def delete_stage(stage_id: int, current_user: User = Depends(get_current_u
 
         if course.teacher_id != current_user.id:
             raise HTTPException(status_code=403, detail="You are not the owner of this course")
-
         db.delete(stage)
-
-        module.total_stages_in_module -= 1
-        chapter.total_stages_in_chapter -= 1
-        course.total_stages -= 1
-
         db.commit()
 
-        return JSONResponse(content={"status": True, "text_for_budges": "Stage deleted successfully."}, status_code=200)
+        return JSONResponse(content={"status": True, "message": "Stage deleted successfully."}, status_code=200)
     except Exception as e:
         return JSONResponse(
-            content={"status": False, "error": str(e)},
+            content={"status": False, "message": str(e)},
             status_code=500,
         )
 @lms_views.get("/stage/{stage_id}")

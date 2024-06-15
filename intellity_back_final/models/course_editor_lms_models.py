@@ -137,7 +137,7 @@ class Chapter(Base):
 
     course = relationship("Course", back_populates="chapters")
     modules = relationship("Module", back_populates="chapter", cascade="all, delete-orphan")
-
+    chapter_progress = relationship("ChapterProgress", back_populates="chapter", cascade="all, delete-orphan")
     def __str__(self):
         return self.title
 
@@ -180,7 +180,7 @@ class Module(Base):
     total_stages_in_module = Column(BigInteger, default=0)
     chapter = relationship("Chapter", back_populates="modules")
     stages = relationship("Stage", back_populates="module", cascade="all, delete-orphan")
-
+    module_progress = relationship("ModuleProgress", back_populates="module", cascade="all, delete-orphan")
     def __str__(self):
         return f'{self.title}'
 
@@ -204,7 +204,8 @@ class Stage(Base):
     title = Column(String(30))
 
     module = relationship("Module", back_populates="stages")
-    stage_progress = relationship("StageProgress", back_populates="stage") 
+    stage_progress = relationship("StageProgress", back_populates="stage", cascade="all, delete-orphan") 
+
     __mapper_args__ = {
         'polymorphic_identity': 'stage_item',
         'polymorphic_on': type
