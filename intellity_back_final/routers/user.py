@@ -35,9 +35,9 @@ from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 import os
 from ..auth import create_access_token, create_refresh_token, verify_token, oauth2_scheme
-
+from dotenv import load_dotenv
 from pydantic import BaseModel
-
+load_dotenv()
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 ALGORITHM = os.environ.get("ALGORITHM")
