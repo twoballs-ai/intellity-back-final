@@ -22,7 +22,7 @@ import json
 import jwt
 import bcrypt
 import os
-
+from ..utils.email_utils import send_welcome_email
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from intellity_back_final.models.course_editor_lms_models import Course, CourseCategory
 from intellity_back_final.models.user_models import User
@@ -117,7 +117,7 @@ def get_current_user_view(current_user: User = Depends(get_current_user)):
     return current_user
 
 @user_views.post("/teacher-register/")
-def create_teacher_view(teacher: TeacherCreate, db: Session = Depends(get_db)):
+def create_teacher_view(teacher: TeacherCreate, db: Session = Depends(get_db), background_tasks: BackgroundTasks = None):
     try:
         teacher = user_crud.create_teacher(
             db=db,
@@ -128,6 +128,7 @@ def create_teacher_view(teacher: TeacherCreate, db: Session = Depends(get_db)):
             qualification=teacher.qualification,
             skills=teacher.skills
         )
+        background_tasks.add_task(send_welcome_email, teacher.email, teacher.name, "учитель")
         return JSONResponse(
             content={
                 "status": True,
@@ -143,7 +144,7 @@ def create_teacher_view(teacher: TeacherCreate, db: Session = Depends(get_db)):
         )
 
 @user_views.post("/student-register/")
-def create_student_view(student: StudentCreate, db: Session = Depends(get_db)):
+def create_student_view(student: StudentCreate, db: Session = Depends(get_db), background_tasks: BackgroundTasks = None):
     try:
         student = user_crud.create_student(
             db=db,
@@ -151,6 +152,7 @@ def create_student_view(student: StudentCreate, db: Session = Depends(get_db)):
             password=student.password,
             interested_categories=student.interested_categories
         )
+        background_tasks.add_task(send_welcome_email, student.email, student.email.split('@')[0], "студент")  # assuming name is part of email
         return JSONResponse(
             content={
                 "status": True,
@@ -164,7 +166,7 @@ def create_student_view(student: StudentCreate, db: Session = Depends(get_db)):
             content={"status": False, "error": str(e)},
             status_code=500,
         )
-
+    
 @user_views.post("/token")
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(), 

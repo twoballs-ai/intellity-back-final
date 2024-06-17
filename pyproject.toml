@@ -19,6 +19,7 @@ bcrypt = "^4.1.2"
 pillow = "^10.3.0"
 gunicorn = "^22.0.0"
 python-dotenv = "^1.0.1"
+aiosmtplib = "^3.0.1"
 
 
 [build-system]
