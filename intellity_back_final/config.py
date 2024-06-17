@@ -1,4 +1,4 @@
-from pydantic import BaseSettings, EmailStr
+from pydantic_settings import BaseSettings, EmailStr
 
 
 class Settings(BaseSettings):
