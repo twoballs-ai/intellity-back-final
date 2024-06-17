@@ -10,7 +10,8 @@ from fastapi import (
     UploadFile,
     Response,
     HTTPException,
-    status
+    status,
+    BackgroundTasks
 )
 from datetime import datetime, timedelta
 import asyncio
@@ -22,13 +23,14 @@ import json
 import jwt
 import bcrypt
 import os
-from ..utils.email_utils import send_welcome_email
+
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from intellity_back_final.models.course_editor_lms_models import Course, CourseCategory
 from intellity_back_final.models.user_models import User
 from ..database import SessionLocal
 from ..crud import user_crud
 from ..schemas import user_schemas
+from intellity_back_final.utils.email_utils import send_welcome_email
 from ..auth import create_access_token, create_refresh_token, verify_token, oauth2_scheme
 from dotenv import load_dotenv
 load_dotenv()
