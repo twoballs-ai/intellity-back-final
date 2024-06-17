@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  app:
+  backend:
     build: .
     environment:
       - SQLALCHEMY_DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@95.163.222.197:5432/intellity_db
@@ -11,8 +11,12 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.backend.rule=Host(`backend.intellity.ru`)"
-      - "traefik.http.routers.backend.entrypoints=websecure"
-      - "traefik.http.routers.backend.tls.certresolver=myresolver"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.routers.backend.middlewares=https-redirect"
+      - "traefik.http.routers.backend-secure.rule=Host(`backend.intellity.ru`)"
+      - "traefik.http.routers.backend-secure.entrypoints=websecure"
+      - "traefik.http.routers.backend-secure.tls.certresolver=myresolver"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
     networks:
       - intellity_network
 
