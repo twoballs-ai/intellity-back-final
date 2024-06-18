@@ -1,5 +1,5 @@
-from pydantic_settings import BaseSettings, EmailStr
-
+from pydantic_settings import BaseSettings
+from pydantic import EmailStr
 
 class Settings(BaseSettings):
     SECRET_KEY: str
@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     SQLALCHEMY_DATABASE_URL: str
 
     # Email settings
-    MAIL_USERNAME: EmailStr
+    MAIL_USERNAME: str
     MAIL_PASSWORD: str
     MAIL_FROM: EmailStr
     MAIL_PORT: int
