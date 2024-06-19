@@ -9,6 +9,7 @@ from fastapi import (
     File,
     UploadFile,
     Response,
+    EmailStr,
     HTTPException,
     status,
     BackgroundTasks
@@ -56,7 +57,13 @@ def authenticate_user(username: str, password: str, db: Session = Depends(get_db
 
 
 class UserBase(BaseModel):
-    email: str
+    email: EmailStr
+
+    @validator('email')
+    def email_must_be_lowercase(cls, v):
+        if not v.islower():
+            raise ValueError('Email must be in lowercase')
+        return v.lower()
 
 class UserCreate(UserBase):
     password: str
@@ -66,6 +73,9 @@ class TeacherCreate(UserCreate):
     name: str
     lastName: str
     skills: str
+    
+
+
 
 class Teacher(TeacherCreate):
     id: int
