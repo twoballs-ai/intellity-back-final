@@ -60,6 +60,7 @@ class Teacher(User):
     skills = Column(Text)
 
     courses_model = relationship("Course", back_populates="teacher_model")
+    blogs = relationship("Blog", back_populates="owner")
 
     __mapper_args__ = {
         'polymorphic_identity': 'teacher_model',
