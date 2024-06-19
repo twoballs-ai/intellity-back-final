@@ -9,7 +9,6 @@ from fastapi import (
     File,
     UploadFile,
     Response,
-    EmailStr,
     HTTPException,
     status,
     BackgroundTasks
@@ -18,7 +17,7 @@ from datetime import datetime, timedelta
 import asyncio
 from sqlalchemy import and_, func
 from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, EmailStr, validator
 from sqlalchemy.orm import Session
 import json
 import jwt
