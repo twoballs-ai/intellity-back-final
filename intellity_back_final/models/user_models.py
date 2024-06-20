@@ -19,6 +19,7 @@ class User(Base):
     type = Column(String(64))
     is_active = Column(Boolean, default=True)  # Добавляем поле is_active
 
+    blogs = relationship("Blog", back_populates="owner")
     __mapper_args__ = {
         'polymorphic_identity': 'user_model',
         'polymorphic_on': 'type'
@@ -62,7 +63,7 @@ class Teacher(User):
     skills = Column(Text)
 
     courses_model = relationship("Course", back_populates="teacher_model")
-    blogs = relationship("Blog", back_populates="owner")
+
 
     __mapper_args__ = {
         'polymorphic_identity': 'teacher_model',
@@ -91,6 +92,8 @@ class Student(User):
 
     id = Column(Integer, ForeignKey('user_model.id'), primary_key=True)
     interested_categories = Column(Text)
+    solved_tasks_count = Column(Integer, default=0)  # Добавлен новый атрибут для счетчика решенных задач
+    energy = Column(Integer, default=100)  # Добавлен атрибут для энергии, установленное значение по умолчанию 100
 
     chapter_progress = relationship("ChapterProgress", back_populates="student")
     module_progress = relationship("ModuleProgress", back_populates="student")
@@ -109,13 +112,14 @@ class Student(User):
         """
         Convert the student object to a dictionary.
         """
-        user_dict = super().to_dict()  # Call the parent method to get the base attributes
+        user_dict = super().to_dict()  # Вызываем метод родительского класса для получения базовых атрибутов
         student_dict = {
             "interested_categories": self.interested_categories,
-            # Add other attributes specific to the student
+            "solved_tasks_count": self.solved_tasks_count,
+            "energy": self.energy,
+            # Добавляем другие атрибуты, специфичные для студента
         }
-        return {**user_dict, **student_dict}  # Merge dictionaries
-
+        return {**user_dict, **student_dict}
     
 class Role(Base):
     __tablename__ = "role_model"

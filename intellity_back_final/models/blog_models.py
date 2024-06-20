@@ -37,12 +37,12 @@ class Blog(Base):
     title = Column(String(30))
     content = Column(Text)
     category_id = Column(Integer, ForeignKey('blog_category_model.id'))
-    owner_id = Column(Integer, ForeignKey('teacher_model.id'))
+    owner_id = Column(Integer, ForeignKey('user_model.id'))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     category = relationship("BlogCategory", back_populates="blogs")
-    owner = relationship("Teacher", back_populates="blogs")
+    owner = relationship("User", back_populates="blogs")
 
     def __str__(self):
         return self.title

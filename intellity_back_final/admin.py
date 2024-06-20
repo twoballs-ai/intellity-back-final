@@ -1,6 +1,7 @@
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
+from intellity_back_final.models.blog_models import Blog
 from intellity_back_final.models.user_models import User, Teacher, Student, Role, Privilege, SiteUser
 from intellity_back_final.database import SessionLocal, engine
 import bcrypt
@@ -30,6 +31,8 @@ class PrivilegeAdmin(ModelView, model=Privilege):
 class SiteUserAdmin(ModelView, model=SiteUser):
     column_list = [SiteUser.id, SiteUser.email, SiteUser.role_id]
 
+class BlogAdmin(ModelView, model=Blog):
+    column_list = [Blog.id, Blog.title,"owner.email", Blog.content, Blog.category, Blog.created_at, Blog.updated_at]
 class AdminAuth(AuthenticationBackend):
     async def login(self, request: Request) -> bool:
         form = await request.form()
@@ -68,4 +71,6 @@ def create_admin_app(app):
     admin.add_view(RoleAdmin)
     admin.add_view(PrivilegeAdmin)
     admin.add_view(SiteUserAdmin)
+    admin.add_view(BlogAdmin)
+    
     return admin
