@@ -32,6 +32,7 @@ app.add_middleware(
     CORSMiddleware,
     # allow_origins=["https://backend.intellity.ru"],
     allow_origins=["*"],
+    allow_origins=["https://intellity.ru"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
