@@ -2,7 +2,7 @@
 name = "intellity-back-final"
 version = "0.1.0"
 description = ""
-authors = ["Борис Богатырев <johndoe@email.com>"]
+authors = ["Борис Богатырев <twoballs20@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
