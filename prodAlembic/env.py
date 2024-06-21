@@ -21,6 +21,7 @@ config.set_main_option('sqlalchemy.url', os.getenv('SQLALCHEMY_DATABASE_URL'))
 from intellity_back_final.models.course_editor_lms_models import *
 from intellity_back_final.models.user_models import *
 from intellity_back_final.models.course_study_lms_models import *
+from intellity_back_final.models.blog_models import *
 # target_metadata = mymodel.Base.metadata
 target_metadata = [Base.metadata]
 

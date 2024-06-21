@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 # from . import models
 import bcrypt
 
+
 def create_teacher(db: Session, name: str,lastName:str,  email: str, password: str, qualification: str, skills: str):
     # Создаем соленый хеш пароля
     password_hash = user_models.User.create_password_hash(password)
