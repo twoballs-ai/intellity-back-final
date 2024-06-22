@@ -63,7 +63,7 @@ async def create_news(news: BlogCreate, current_user: User = Depends(get_current
 
 # Read blog posts with pagination
 @blog_views.get("/news/")
-async def read_news(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+async def read_news(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
     result = db.query(Blog).offset(skip).limit(limit).all()
     news = [category.to_dict() for category in result]
     return JSONResponse(
@@ -73,7 +73,18 @@ async def read_news(skip: int = 0, limit: int = 10, db: Session = Depends(get_db
         },
         status_code=200,
     )
-
+@blog_views.get("/news/{news_id}")
+async def read_news_by_id(news_id: int, db: Session = Depends(get_db)):
+    news_item = db.query(Blog).filter(Blog.id == news_id).first()
+    if not news_item:
+        raise HTTPException(status_code=404, detail="News not found")
+    return JSONResponse(
+        content={
+            "status": True,
+            "data": news_item.to_dict(),
+        },
+        status_code=200,
+    )
 # Read blog categories with pagination
 @blog_views.get("/categories/")
 async def read_categories(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
