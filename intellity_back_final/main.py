@@ -30,7 +30,9 @@ def redoc():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://intellity.ru"],
+    # allow_origins=["https://backend.intellity.ru"],
+    # allow_origins=["*"], 
+    allow_origins=["https://intellity.ru", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -49,10 +49,12 @@ class Blog(Base):
 
     def to_dict(self):
         return {
+            "id":self.id,
             "title": self.title,
             "content": self.content,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "author": self.owner.email
         }
 
  
