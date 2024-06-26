@@ -3,7 +3,10 @@ import uvicorn
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, FileResponse
+from contextlib import asynccontextmanager
+
 from intellity_back_final.admin import create_admin_app
+from intellity_back_final.redis.redis_client import get_redis_client
 from .routers.lms import lms_views
 from .routers.user import user_views
 from .routers.learning_course import study_course_views
@@ -15,7 +18,26 @@ from .auth import oauth2_scheme
 import intellity_back_final.handlers  # For registering event handlers
 from fastapi.staticfiles import StaticFiles
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize Redis client
+    app.state.redis_client = get_redis_client()
+
+    # Test the Redis connection
+    try:
+        app.state.redis_client.ping()
+        print("Connected to Redis")
+    except Exception as e:
+        print(f"Failed to connect to Redis: {e}")
+
+    # Run the application
+    yield
+
+    # Clean up and close the Redis connection
+    await app.state.redis_client.close()
+    print("Redis connection closed")
+
+app = FastAPI(lifespan=lifespan)
 
 # Create the admin interface
 create_admin_app(app)
@@ -30,8 +52,6 @@ def redoc():
 
 app.add_middleware(
     CORSMiddleware,
-    # allow_origins=["https://backend.intellity.ru"],
-    # allow_origins=["*"], 
     allow_origins=["https://intellity.ru", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
@@ -44,6 +64,7 @@ app.mount("/uploaded_directory", StaticFiles(directory="uploaded_directory"), na
 async def sitemap():
     return "sitemap.xml"
 
+# Include routers
 app.include_router(user_views, prefix="/api/v1/user", tags=["User management"])
 app.include_router(lms_views, prefix="/api/v1/lms", tags=["LMS - Course creation"], dependencies=[Depends(oauth2_scheme)])
 app.include_router(study_course_views, prefix="/api/v1/study", tags=["LMS - Course enrollment and completion"], dependencies=[Depends(oauth2_scheme)])
