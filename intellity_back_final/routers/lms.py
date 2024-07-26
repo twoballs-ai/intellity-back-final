@@ -354,8 +354,6 @@ async def add_chapter_to_course(
         # Определение sort_index
         sort_index = data.sort_index if data.sort_index is not None else (last_chapter.sort_index + 1 if last_chapter else 1)
 
-        # Определение previous_chapter_id
-        previous_chapter_id = last_chapter.id if last_chapter else None
 
         # Создание объекта главы и добавление в базу данных
         chapter_create = ChapterModel(
@@ -365,7 +363,6 @@ async def add_chapter_to_course(
             sort_index=sort_index,
             is_exam=data.is_exam,
             exam_duration_minutes=data.exam_duration_minutes,
-            previous_chapter_id=previous_chapter_id
         )
         db.add(chapter_create)
 

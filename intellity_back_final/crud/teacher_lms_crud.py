@@ -65,12 +65,14 @@ def create_course(db: Session, course: lms_schemas.CourseCreate, user_id: int, c
     return db_course
 
 def get_course_chapters(db: Session, course_id: int, skip: int = 0, limit: int = 100):
-    chapters = db.query(course_editor_lms_models.Chapter).filter(course_editor_lms_models.Chapter.course_id == course_id).all()
+    chapters = db.query(course_editor_lms_models.Chapter).filter(course_editor_lms_models.Chapter.course_id == course_id).order_by(course_editor_lms_models.Chapter.sort_index).all()
 
     chapters_with_modules = []
+    exam_found = False
+    
     for chapter in chapters:
         modules = db.query(course_editor_lms_models.Module).filter(course_editor_lms_models.Module.chapter_id == chapter.id).all()
-        
+
         chapter_data = {
             "id": chapter.id,
             "course_id": chapter.course_id,
@@ -80,10 +82,14 @@ def get_course_chapters(db: Session, course_id: int, skip: int = 0, limit: int =
             "sort_index": chapter.sort_index,
             "is_exam": chapter.is_exam,
             "exam_duration": chapter.exam_duration_minutes,
-            "previous_chapter_id": chapter.previous_chapter_id,
-            "previous_chapter": chapter.previous_chapter.to_dict() if chapter.previous_chapter else None,
+            "is_blocked": exam_found  # Set is_blocked based on exam_found flag
         }
+        
         chapters_with_modules.append(chapter_data)
+        
+        # If the current chapter is an exam, set exam_found to True
+        if chapter.is_exam:
+            exam_found = True
     
     return chapters_with_modules
 

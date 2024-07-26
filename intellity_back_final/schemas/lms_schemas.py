@@ -64,7 +64,6 @@ class AddChapter(BaseModel):
     sort_index: Optional[int] = None
     is_exam: Optional[bool] = False
     exam_duration_minutes: Optional[int] = None
-    previous_chapter_id: Optional[int] = None
 
 
 class UpdateChapter(BaseModel):
@@ -73,7 +72,7 @@ class UpdateChapter(BaseModel):
     sort_index: Optional[int] = None
     is_exam: Optional[bool] = None
     exam_duration_minutes: Optional[int] = None
-    previous_chapter_id: Optional[int] = None
+
 
 
 class AddModule(BaseModel):

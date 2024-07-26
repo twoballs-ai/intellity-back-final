@@ -132,8 +132,7 @@ class Chapter(Base):
     total_stages_in_chapter = Column(BigInteger, default=0)
     is_exam = Column(Boolean, default=False)
     exam_duration_minutes = Column(Integer)
-    previous_chapter_id = Column(Integer, ForeignKey("chapter_model.id"))
-    previous_chapter = relationship("Chapter", remote_side=[id])
+
 
     course = relationship("Course", back_populates="chapters")
     modules = relationship("Module", back_populates="chapter", cascade="all, delete-orphan")
@@ -153,19 +152,10 @@ class Chapter(Base):
             "total_stages_in_chapter": self.total_stages_in_chapter, 
             "is_exam": self.is_exam,
             "exam_duration_minutes": self.exam_duration_minutes,
-            "previous_chapter_id": self.previous_chapter_id,
+
 
         }
 
-    def can_start(self, student):
-        if not self.previous_chapter:
-            return True  # If there is no previous chapter, it's the first chapter, so the student can start it
-        previous_chapter_progress = next((progress for progress in student.chapter_progress if progress.chapter_id == self.previous_chapter.id), None)
-        if not previous_chapter_progress or not previous_chapter_progress.is_completed:
-            return False
-        if self.previous_chapter.is_exam:
-            return previous_chapter_progress.is_completed
-        return True
 
 
 
