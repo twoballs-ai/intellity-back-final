@@ -27,6 +27,7 @@ import os
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from intellity_back_final.models.course_editor_lms_models import Course, CourseCategory
 from intellity_back_final.models.user_models import User
+
 from ..database import SessionLocal
 from ..crud import user_crud
 from ..schemas import user_schemas
@@ -178,6 +179,29 @@ def create_student_view(student: StudentCreate, db: Session = Depends(get_db), b
             status_code=500,
         )
     
+@user_views.post("/site-user-register/")
+def create_site_user_view(site_user: user_schemas.SiteUserCreate, db: Session = Depends(get_db), background_tasks: BackgroundTasks = None):
+    try:
+        site_user = user_crud.create_site_user(
+            db=db,
+            email=site_user.email,
+            password=site_user.password,
+        )
+        background_tasks.add_task(send_welcome_email, site_user.email, site_user.email.split('@')[0], "пользователь сайта")  # assuming name is part of email
+        return JSONResponse(
+            content={
+                "status": True,
+                "data": site_user.to_dict(),
+                "message": "Вы зарегистрированы как пользователь сайта"
+            },
+            status_code=200,
+        )
+    except Exception as e:
+        return JSONResponse(
+            content={"status": False, "error": str(e)},
+            status_code=500,
+        )
+    
 @user_views.post("/token")
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(), 
@@ -301,3 +325,4 @@ def reset_password(
         },
         status_code=200,
     )
+

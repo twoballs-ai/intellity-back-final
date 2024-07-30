@@ -22,7 +22,6 @@ from sqlalchemy.orm import Session
 
 import json
 
-
 from intellity_back_final.models.course_editor_lms_models import Course, CourseCategory, Module, Stage as StageModel, Answer as AnswerModel, QuizLesson as QuizLessonModel
 import logging
 
@@ -54,9 +53,6 @@ UPLOAD_DIRECTORY = "uploaded_directory"
 if not os.path.exists(UPLOAD_DIRECTORY):
     os.makedirs(UPLOAD_DIRECTORY)
 
-
-
-    
 
 @lms_views.post("/category/", response_model=lms_schemas.CourseCategory)
 def create_course_category(category: lms_schemas.CourseCategoryCreate, db: Session = Depends(get_db)):

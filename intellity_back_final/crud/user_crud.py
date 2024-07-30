@@ -1,8 +1,7 @@
 from sqlalchemy.orm import Session
-
 from ..models import user_models
 from ..schemas import lms_schemas
-from sqlalchemy.orm import Session
+
 # from . import models
 import bcrypt
 
@@ -28,6 +27,7 @@ def create_student(db: Session, email: str, password: str, interested_categories
     db.commit()
     db.refresh(db_student)
     return db_student
+    
 
 def get_user(db: Session, user_id: int):
     return db.query(user_models.User).filter(user_models.User.id == user_id).first()
@@ -38,3 +38,12 @@ def get_user_by_email(db: Session, email: str):
 
 def get_teacher_by_user_id(db: Session, user_id: int):
     return db.query(user_models.Teacher).filter(user_models.Teacher.id == user_id).first()
+
+def create_site_user(db: Session, email: str, password: str):
+    password_hash = user_models.User.create_password_hash(password)
+
+    db_site_user = user_models.SiteUser(email=email, password_hash=password_hash)
+    db.add(db_site_user)
+    db.commit()
+    db.refresh(db_site_user)
+    return db_site_user

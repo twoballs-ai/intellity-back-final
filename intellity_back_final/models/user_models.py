@@ -18,7 +18,7 @@ class User(Base):
     password_hash = Column(String(64))
     type = Column(String(64))
     is_active = Column(Boolean, default=True)  # Добавляем поле is_active
-
+    is_verified = Column(Boolean, default=False)
     blogs = relationship("Blog", back_populates="owner")
     __mapper_args__ = {
         'polymorphic_identity': 'user_model',
@@ -61,7 +61,7 @@ class Teacher(User):
     lastName = Column(String(64))
     qualification = Column(String)
     skills = Column(Text)
-
+    rate = Column(Integer, default=0)
     courses_model = relationship("Course", back_populates="teacher_model")
 
 
@@ -94,7 +94,7 @@ class Student(User):
     interested_categories = Column(Text)
     solved_tasks_count = Column(Integer, default=0)  # Добавлен новый атрибут для счетчика решенных задач
     energy = Column(Integer, default=100)  # Добавлен атрибут для энергии, установленное значение по умолчанию 100
-
+    rate = Column(Integer, default=0)
     chapter_progress = relationship("ChapterProgress", back_populates="student")
     module_progress = relationship("ModuleProgress", back_populates="student")
     stage_progress = relationship("StageProgress", back_populates="student")
@@ -128,7 +128,7 @@ class Role(Base):
     name = Column(String(64), unique=True)
 
     privileges = relationship("Privilege", secondary=role_privilege_association, back_populates="roles")
-    admins = relationship("SiteUser", back_populates="role")
+    site_user = relationship("SiteUser", back_populates="role")
     def __str__(self):
         return self.name
 
@@ -161,8 +161,8 @@ class SiteUser(User):
 
     id = Column(Integer, ForeignKey('user_model.id'), primary_key=True)
     role_id = Column(Integer, ForeignKey('role_model.id'))
-
-    role = relationship("Role", back_populates="admins")
+    is_superuser = Column(Boolean, default=False)
+    role = relationship("Role", back_populates="site_user")
 
     __mapper_args__ = {
         'polymorphic_identity': 'site_user_model',
