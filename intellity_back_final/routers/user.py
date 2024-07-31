@@ -93,7 +93,7 @@ class Student(StudentCreate):
         orm_mode = True
 
 @user_views.get("/siteuser/role-specific")
-async def read_siteuser_data(current_user: list = Depends(role_checker(["editor"]))):
+async def read_siteuser_data(current_user: User = Depends(role_checker(["admin"]))):
     print("fff")
     return {"msg": f"Hello, siteuser with role admin {current_user.id}!"}
 
