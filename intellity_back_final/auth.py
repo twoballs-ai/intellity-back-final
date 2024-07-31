@@ -12,6 +12,7 @@ from intellity_back_final.crud.user_crud import get_user
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from intellity_back_final.database import SessionLocal
+from intellity_back_final.models.user_models import SiteUser, User
 load_dotenv()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/user/token")
 
@@ -89,6 +90,34 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
             detail="Token is invalid",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+async def get_current_user_role(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: int = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+        user = get_user(db, user_id)
+        if user is None:
+            raise credentials_exception
+        return user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.PyJWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is invalid",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     
 def type_checker(required_types: list):
     def type_dependency(current_user: dict = Depends(get_current_user)):
@@ -102,13 +131,21 @@ def type_checker(required_types: list):
     return type_dependency
 
 def role_checker(required_roles: list):
-    def role_dependency(current_user: dict = Depends(get_current_user)):
-        print(current_user)
-        user_roles = current_user.get("roles", [])
-        if not any(role in user_roles for role in required_roles):
+    async def role_dependency(current_user: User = Depends(get_current_user)):
+        print(f"Checking roles for user: {current_user}")
+        if isinstance(current_user, SiteUser):
+            print(f"User is a SiteUser with roles: {current_user.role.name if current_user.role else 'No role'}")
+            user_roles = [current_user.role.name] if current_user.role else []
+            if not any(role in user_roles for role in required_roles):
+                print(f"User does not have the required role(s): {required_roles}")
+                raise HTTPException(
+                    status_code=403,
+                    detail="Operation not permitted",
+                )
+            return current_user
+        else:
             raise HTTPException(
-                status_code=403,
-                detail="Operation not permitted",
-            )
-        return current_user
+                    status_code=403,
+                    detail="Operation not permitted",
+                )
     return role_dependency

@@ -30,7 +30,19 @@ def create_student(db: Session, email: str, password: str, interested_categories
     
 
 def get_user(db: Session, user_id: int):
-    return db.query(user_models.User).filter(user_models.User.id == user_id).first()
+    user = db.query(user_models.User).filter(user_models.User.id == user_id).first()
+    if not user:
+        return None
+
+    if user.type == 'teacher_model':
+        print("teacher_model")
+        return db.query(user_models.Teacher).filter(user_models.Teacher.id == user_id).first()
+    elif user.type == 'student_model':
+        print("student_model")
+        return db.query(user_models.Student).filter(user_models.Student.id == user_id).first()
+    elif user.type == 'site_user_model':
+        print("site_user_model")
+        return db.query(user_models.SiteUser).filter(user_models.SiteUser.id == user_id).first()
 
 
 def get_user_by_email(db: Session, email: str):
