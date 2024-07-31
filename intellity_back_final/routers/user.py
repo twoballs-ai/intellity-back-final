@@ -32,7 +32,7 @@ from ..database import SessionLocal
 from ..crud import user_crud
 from ..schemas import user_schemas
 from intellity_back_final.utils.email_utils import send_welcome_email
-from ..auth import create_access_token, create_refresh_token, verify_token, oauth2_scheme
+from ..auth import create_access_token, create_refresh_token, get_current_user, role_checker, verify_token, oauth2_scheme
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -92,37 +92,11 @@ class Student(StudentCreate):
     class Config:
         orm_mode = True
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        # print(token)
-        # print(SECRET_KEY)
-        payload = jwt.decode(token, SECRET_KEY, algorithms=ALGORITHM)
-        # print(payload)
-        user_id: int = payload.get("sub")
-        # print(user_id)
-        if user_id is None:
-            raise credentials_exception
-        user = user_crud.get_user(db, user_id)
-        if user is None:
-            raise credentials_exception
-        return user
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token is invalid",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+@user_views.get("/siteuser/role-specific")
+def read_siteuser_data(current_user: dict = Depends(role_checker(["admin"]))):
+    return {"msg": f"Hello, siteuser with role admin {current_user['user_id']}!"}
+
+
 
 @user_views.post("/get-current-user/")
 def get_current_user_view(current_user: User = Depends(get_current_user)):
@@ -214,13 +188,16 @@ async def login_for_access_token(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    user_data = {"sub": user.id, "type": user.type}
+    if user.type == "site_user_model":
+        user_data["roles"] = user.role_id  # Предполагается, что у объекта user есть атрибут roles
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.id, "type": "access"}, expires_delta=access_token_expires
+        data=user_data, expires_delta=access_token_expires
     )
     refresh_token_expires = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     refresh_token = create_refresh_token(
-        data={"sub": user.id, "type": "refresh"}, expires_delta=refresh_token_expires
+        data=user_data, expires_delta=refresh_token_expires
     )
     return {
         "access_token": access_token,
@@ -228,6 +205,7 @@ async def login_for_access_token(
         "token_type": "Bearer",
         "type": user.type
     }
+
 
 @user_views.post("/token/refresh/")
 async def refresh_access_token(refresh_token: str = Form(...)):
@@ -239,6 +217,8 @@ async def refresh_access_token(refresh_token: str = Form(...)):
     try:
         payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
+        user_type: str = payload.get("type")
+        roles: list = payload.get("roles", [])
         if user_id is None:
             raise credentials_exception
     except jwt.ExpiredSignatureError:
@@ -248,9 +228,10 @@ async def refresh_access_token(refresh_token: str = Form(...)):
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user_id, "type": "access"}, expires_delta=access_token_expires
+        data={"sub": user_id, "type": user_type, "roles": roles}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "Bearer"}
+
 
 @user_views.get("/teacher-profile")
 def get_teacher_info(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
