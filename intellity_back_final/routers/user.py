@@ -32,7 +32,7 @@ from ..database import SessionLocal
 from ..crud import user_crud
 from ..schemas import user_schemas
 from intellity_back_final.utils.email_utils import send_welcome_email
-from ..auth import create_access_token, create_refresh_token, get_current_user, role_checker, verify_token, oauth2_scheme
+from ..auth import create_access_token, create_refresh_token, get_current_user, role_checker, type_checker, verify_token, oauth2_scheme
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -92,10 +92,20 @@ class Student(StudentCreate):
     class Config:
         orm_mode = True
 
+# @user_views.get("/protected-route-admin")
+# # @role_checker(["Administrator"])
+# async def protected_route_admin(current_user: User = Depends(get_current_user)):
+#     return {"message": "Hello Admin!", "user": current_user.to_dict()}
+@user_views.get("/protected-route-teacher")
+async def protected_route_teacher(
+    current_user: User = Depends(type_checker(["teacher_model"]))
+):
+    return {"message": "Hello Teacher!", "user": current_user.to_dict()}
+
 @user_views.get("/siteuser/role-specific")
-async def read_siteuser_data(current_user: User = Depends(role_checker(["admin"]))):
+async def read_siteuser_data(current_user: User = Depends(role_checker(["Administrator"]))):
     print("fff")
-    return {"msg": f"Hello, siteuser with role admin {current_user.id}!"}
+    return {"message": "Hello Admin!", "user": current_user.to_dict()}
 
 @user_views.post("/get-current-user/")
 def get_current_user_view(current_user: User = Depends(get_current_user)):

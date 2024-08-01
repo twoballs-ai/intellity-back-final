@@ -1,7 +1,8 @@
+from functools import wraps
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import List, Optional
 import jwt
 import bcrypt
 import os
@@ -91,45 +92,18 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-async def get_current_user_role(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = payload.get("sub")
-        if user_id is None:
-            raise credentials_exception
-        user = get_user(db, user_id)
-        if user is None:
-            raise credentials_exception
-        return user
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token is invalid",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
     
-def type_checker(required_types: list):
-    def type_dependency(current_user: dict = Depends(get_current_user)):
-        user_type = current_user.get("user_type", "")
-        if user_type not in required_types:
+def type_checker(required_types: List[str]):
+    async def type_dependency(current_user: User = Depends(get_current_user)):
+        if current_user.type not in required_types:
             raise HTTPException(
-                status_code=403,
-                detail="Operation not permitted",
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Operation not permitted"
             )
         return current_user
     return type_dependency
 
+# рабочий вариант используя зависимости
 def role_checker(required_roles: list):
     async def role_dependency(current_user: User = Depends(get_current_user)):
         print(f"Checking roles for user: {current_user}")
@@ -149,3 +123,27 @@ def role_checker(required_roles: list):
                     detail="Operation not permitted",
                 )
     return role_dependency
+# рабочий вариант используя декораторы
+# def role_checker(required_roles: List[str]):
+#     def decorator(func):
+#         @wraps(func)
+#         async def wrapper(*args, **kwargs):
+#             current_user = kwargs.get('current_user', None)
+#             if not current_user:
+#                 # This assumes that `current_user` is being passed as a keyword argument
+#                 current_user = await get_current_user()
+#             if isinstance(current_user, SiteUser):
+#                 user_roles = [current_user.role.name] if current_user.role else []
+#                 if not any(role in user_roles for role in required_roles):
+#                     raise HTTPException(
+#                         status_code=status.HTTP_403_FORBIDDEN,
+#                         detail="Operation not permitted",
+#                     )
+#             else:
+#                 raise HTTPException(
+#                     status_code=status.HTTP_403_FORBIDDEN,
+#                     detail="Operation not permitted",
+#                 )
+#             return await func(*args, **kwargs)
+#         return wrapper
+#     return decorator

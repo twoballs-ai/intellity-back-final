@@ -34,15 +34,23 @@ def get_user(db: Session, user_id: int):
     if not user:
         return None
 
-    if user.type == 'teacher_model':
-        print("teacher_model")
-        return db.query(user_models.Teacher).filter(user_models.Teacher.id == user_id).first()
-    elif user.type == 'student_model':
-        print("student_model")
-        return db.query(user_models.Student).filter(user_models.Student.id == user_id).first()
-    elif user.type == 'site_user_model':
-        print("site_user_model")
-        return db.query(user_models.SiteUser).filter(user_models.SiteUser.id == user_id).first()
+    # Сопоставление типа пользователя с соответствующими моделями
+    model_mapping = {
+        'teacher_model': user_models.Teacher,
+        'student_model': user_models.Student,
+        'site_user_model': user_models.SiteUser,
+    }
+
+    # Получение модели в зависимости от типа
+    user_model = model_mapping.get(user.type)
+
+    if user_model:
+        print(f"{user.type} found")
+        return db.query(user_model).filter(user_model.id == user_id).first()
+    else:
+        print("Unknown user type")
+        return None
+    
 
 
 def get_user_by_email(db: Session, email: str):
