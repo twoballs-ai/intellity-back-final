@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 import json
 
+from intellity_back_final.auth import type_checker
 from intellity_back_final.models.course_editor_lms_models import Course, CourseCategory, Module, Stage as StageModel, Answer as AnswerModel, QuizLesson as QuizLessonModel
 import logging
 
@@ -119,7 +120,7 @@ def create_course_category(
     title: str = Form(..., max_length=30),
     description: str = Form(None),
     category: int = Form(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(type_checker(["teacher_model"])),
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
