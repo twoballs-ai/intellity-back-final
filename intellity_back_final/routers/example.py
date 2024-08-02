@@ -13,3 +13,13 @@
 # @role_checker(["Administrator"])
 # async def protected_route_admin(current_user: User = Depends(get_current_user)):
 #     return {"message": "Hello Admin!", "user": current_user.to_dict()}
+# @user_views.get("/protected-route-teacher")
+# async def protected_route_teacher(
+#     current_user: User = Depends(type_checker(["teacher_model"]))
+# ):
+#     return {"message": "Hello Teacher!", "user": current_user.to_dict()}
+
+# @user_views.get("/siteuser/role-specific")
+# async def read_siteuser_data(current_user: User = Depends(role_checker(["Administrator"]))):
+#     print("fff")
+#     return {"message": "Hello Admin!", "user": current_user.to_dict()}

@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 
 from intellity_back_final.models.blog_models import Blog
+from intellity_back_final.models.site_utils_models import ActionLog
 from intellity_back_final.models.user_models import User, Teacher, Student, Role, Privilege, SiteUser
 from intellity_back_final.database import SessionLocal, engine
 import bcrypt
@@ -40,6 +41,8 @@ class SiteUserAdmin(ModelView, model=SiteUser):
 class BlogAdmin(ModelView, model=Blog):
     column_list = [Blog.id, Blog.title, Blog.content, Blog.category, Blog.created_at, Blog.updated_at]
 
+class LoggingAdmin(ModelView, model=ActionLog):
+    column_list = [ActionLog.id, ActionLog.user_id, ActionLog.action, ActionLog.timestamp]
 
 class AdminAuth(AuthenticationBackend):
     async def login(self, request: Request) -> bool:
@@ -91,5 +94,6 @@ def create_admin_app(app):
     admin.add_view(PrivilegeAdmin)
     admin.add_view(SiteUserAdmin)
     admin.add_view(BlogAdmin)
+    admin.add_view(LoggingAdmin)
     
     return admin

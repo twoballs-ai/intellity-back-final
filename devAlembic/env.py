@@ -26,6 +26,7 @@ from intellity_back_final.models.course_editor_lms_models import *
 from intellity_back_final.models.user_models import *
 from intellity_back_final.models.course_study_lms_models import *
 from intellity_back_final.models.blog_models import *
+from intellity_back_final.models.site_utils_models import *
 # Set the target metadata
 target_metadata = [Base.metadata]
 

@@ -3,6 +3,9 @@ from fastapi import FastAPI, HTTPException
 from sqlalchemy import asc, create_engine
 from sqlalchemy.orm import sessionmaker
 
+from intellity_back_final.models.site_utils_models import LogType
+from intellity_back_final.utils.utils import log_action
+
 from ..models import course_editor_lms_models
 from ..schemas import lms_schemas
 from typing import List
@@ -32,11 +35,24 @@ def get_categoryes(db: Session, skip: int = 0, limit: int = 100, to_select: bool
     ]
 
 
-def create_category(db: Session, category: lms_schemas.CourseCategoryCreate):
-    db_category = course_editor_lms_models.CourseCategory(title=category.title, description=category.description)
+def create_category(db: Session, category: lms_schemas.CourseCategoryCreate,current_user):
+    db_category = course_editor_lms_models.CourseCategory(title=category.title, description=category.description, )
     db.add(db_category)
     db.commit()
     db.refresh(db_category)
+    log_type = db.query(LogType).filter(LogType.name == "CREATE").first()
+    if not log_type:
+        raise HTTPException(status_code=500, detail="Log type 'CREATE' not found")
+    # Log the action
+    log_action(
+        db=db,
+        user_id=current_user.id,
+        action=f"Created category: {category.title}",
+        log_type_id=log_type.id,
+        object_id=str(db_category.id),
+        model_name="CourseCategory"  # Provide the model or table name
+    )
+    
     return db_category
 
 

@@ -9,6 +9,7 @@ from .routers.user import user_views
 from .routers.learning_course import study_course_views
 from .routers.course_checkers import study_course_checker_views
 from .routers.basic_lms_routers import basic_handle_views
+from .routers.manage_site_routers import manage_site_views
 from .routers.blog_routers import blog_views
 from fastapi.security import OAuth2PasswordBearer
 from .auth import oauth2_scheme
@@ -45,6 +46,7 @@ async def sitemap():
     return "sitemap.xml"
 
 app.include_router(user_views, prefix="/api/v1/user", tags=["User management"])
+app.include_router(manage_site_views, prefix="/api/v1/manage", tags=["Site management"], dependencies=[Depends(oauth2_scheme)])
 app.include_router(lms_views, prefix="/api/v1/lms", tags=["LMS - Course creation"], dependencies=[Depends(oauth2_scheme)])
 app.include_router(study_course_views, prefix="/api/v1/study", tags=["LMS - Course enrollment and completion"], dependencies=[Depends(oauth2_scheme)])
 app.include_router(study_course_checker_views, prefix="/api/v1/course_checkers", tags=["LMS - Course checkers"], dependencies=[Depends(oauth2_scheme)])

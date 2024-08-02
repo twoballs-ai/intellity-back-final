@@ -54,13 +54,6 @@ if not os.path.exists(UPLOAD_DIRECTORY):
     os.makedirs(UPLOAD_DIRECTORY)
 
 
-@lms_views.post("/category/", response_model=lms_schemas.CourseCategory)
-def create_course_category(category: lms_schemas.CourseCategoryCreate, db: Session = Depends(get_db)):
-    db_category = teacher_lms_crud.get_category_by_title(db, title=category.title)
-    if db_category:
-        raise HTTPException(status_code=400, detail="категория уже существует")
-    return teacher_lms_crud.create_category(db=db, category=category)
-
 
 @lms_views.get("/courses/")
 def read_courses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
