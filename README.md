@@ -55,8 +55,6 @@ This project implements a Learning Management System (LMS) using SQLAlchemy for 
 - `sort_index`: Integer, default 1
 - `is_exam`: Boolean, default False
 - `exam_duration_minutes`: Integer
-- `previous_chapter_id`: Integer, ForeignKey('chapter_model.id')
-- `previous_chapter`: Relationship with self
 - `course_model`: Relationship with `Course`
 - `module_rel_model`: Relationship with `Module`
 

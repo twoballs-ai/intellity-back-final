@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from intellity_back_final.models.blog_models import Blog
 from intellity_back_final.models.site_utils_models import ActionLog
 from intellity_back_final.models.user_models import User, Teacher, Student, Role, Privilege, SiteUser
+from intellity_back_final.models.course_editor_lms_models import Course
 from intellity_back_final.database import SessionLocal, engine
 import bcrypt
 load_dotenv()
@@ -22,14 +23,22 @@ def get_db():
 class TeacherAdmin(ModelView, model=Teacher):
     column_list = [Teacher.id, Teacher.email, Teacher.name, Teacher.lastName, Teacher.qualification, Teacher.skills]
 
+
+class CourseAdmin(ModelView, model=Course):
+    column_list = [Course.id, Course.category, Course.teacher_id, Course.title, Course.description, Course.status_id] 
+
+
 class StudentAdmin(ModelView, model=Student):
     column_list = [Student.id, Student.email, Student.interested_categories]
+
 
 class RoleAdmin(ModelView, model=Role):
     column_list = [Role.id, Role.name, Role.privileges]
 
+
 class PrivilegeAdmin(ModelView, model=Privilege):
     column_list = [Privilege.id, Privilege.name]
+
 
 class SiteUserAdmin(ModelView, model=SiteUser):
     form_columns = [SiteUser.email,SiteUser.password_hash, SiteUser.role, SiteUser.is_superuser]
@@ -95,5 +104,6 @@ def create_admin_app(app):
     admin.add_view(SiteUserAdmin)
     admin.add_view(BlogAdmin)
     admin.add_view(LoggingAdmin)
+    admin.add_view(CourseAdmin)
     
     return admin

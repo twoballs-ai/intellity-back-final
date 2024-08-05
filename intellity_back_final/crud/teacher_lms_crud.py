@@ -96,8 +96,6 @@ def get_course_chapters(db: Session, course_id: int, skip: int = 0, limit: int =
             "sort_index": chapter.sort_index,
             "is_exam": chapter.is_exam,
             "exam_duration": chapter.exam_duration_minutes,
-            "previous_chapter_id": chapter.previous_chapter_id,
-            "previous_chapter": chapter.previous_chapter.to_dict() if chapter.previous_chapter else None,
         }
         chapters_with_modules.append(chapter_data)
     

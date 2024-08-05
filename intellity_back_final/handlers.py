@@ -120,7 +120,6 @@ def create_students_tables(mapper, connection, target):
             student_id=student_id,
             chapter_id=chapter.id,
             is_completed=False,
-            start_time=datetime.utcnow()
         )
         db.add(chapter_progress)
         db.flush()  # Сохранить изменения, чтобы получить ID

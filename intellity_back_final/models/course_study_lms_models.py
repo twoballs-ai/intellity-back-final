@@ -74,6 +74,23 @@ class ChapterProgress(Base):
     def __str__(self):
         return f"{self.student_id}-{self.chapter_id}"
     
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "student_id": self.student_id,
+            "chapter_id": self.chapter_id,
+            "is_completed": self.is_completed,
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+        }
+    
+    @property
+    def duration(self):
+        if self.start_time and self.end_time:
+            return (self.end_time - self.start_time).total_seconds() / 60  # Return duration in minutes
+        return None
+
+    
     
 class ModuleProgress(Base):
     __tablename__ = "module_progress"

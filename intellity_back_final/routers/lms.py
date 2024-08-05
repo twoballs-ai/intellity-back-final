@@ -187,7 +187,7 @@ def update_course(
     title: str = Form(..., max_length=30), 
     description: str = Form(None), 
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user), 
+    current_user: User = Depends(type_checker(["teacher_model"])),
     db: Session = Depends(get_db)
 ):
     if file.content_type not in ["image/jpeg", "image/png"]:
@@ -242,8 +242,9 @@ def update_course(
         },
         status_code=200,
     )
+
 @lms_views.delete("/delete-course/{course_id}")
-def delete_course(course_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def delete_course(course_id: int, current_user: User = Depends(type_checker(["teacher_model"])), db: Session = Depends(get_db)):
     course = db.query(Course).filter(Course.id == course_id).first()
     
     if course is None:
@@ -267,6 +268,33 @@ def delete_course(course_id: int, current_user: User = Depends(get_current_user)
         status_code=200,
     )
 
+@lms_views.delete("/archive-course/{course_id}")
+def archive_course(course_id: int, current_user: User = Depends(type_checker(["teacher_model"])), db: Session = Depends(get_db)):
+    course = db.query(Course).filter(Course.id == course_id).first()
+    
+    if course is None:
+        raise HTTPException(status_code=404, detail="Course not found")
+    
+    if course.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You are not the owner of this course")
+    
+    # Find the "Archived" status ID
+    archived_status = db.query(CourseStatus).filter(CourseStatus.status == "Архивный").first()
+    
+    if archived_status is None:
+        raise HTTPException(status_code=500, detail="Archived status not found")
+
+    # Change the status of the course to "Archived"
+    course.status_id = archived_status.id
+    db.commit()
+    
+    return JSONResponse(
+        content={
+            "status": True,
+            "message": "Course archived successfully."
+        },
+        status_code=200,
+    )
 
 
 @lms_views.get("/course-chapter-list/{course_id}")
@@ -324,7 +352,7 @@ async def get_chapter(chapter_id: int, db: Session = Depends(get_db)):
 @lms_views.post("/add_chapter_to_course/")
 async def add_chapter_to_course(
     data: lms_schemas.AddChapter, 
-    current_user: User = Depends(get_current_user), 
+    current_user: User = Depends(type_checker(["teacher_model"])), 
     db: Session = Depends(get_db)
 ):
     try:
@@ -344,9 +372,6 @@ async def add_chapter_to_course(
         # Определение sort_index
         sort_index = data.sort_index if data.sort_index is not None else (last_chapter.sort_index + 1 if last_chapter else 1)
 
-        # Определение previous_chapter_id
-        previous_chapter_id = last_chapter.id if last_chapter else None
-
         # Создание объекта главы и добавление в базу данных
         chapter_create = ChapterModel(
             course_id=data.course_id,
@@ -355,7 +380,6 @@ async def add_chapter_to_course(
             sort_index=sort_index,
             is_exam=data.is_exam,
             exam_duration_minutes=data.exam_duration_minutes,
-            previous_chapter_id=previous_chapter_id
         )
         db.add(chapter_create)
 
