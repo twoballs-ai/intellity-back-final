@@ -61,7 +61,6 @@ class AddChapter(BaseModel):
     course_id: int
     title: str
     description: str
-    sort_index: Optional[int] = None
     is_exam: Optional[bool] = False
     exam_duration_minutes: Optional[int] = None
 

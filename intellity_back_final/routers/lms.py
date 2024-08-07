@@ -370,7 +370,7 @@ async def add_chapter_to_course(
         last_chapter = db.query(ChapterModel).filter(ChapterModel.course_id == data.course_id).order_by(ChapterModel.sort_index.desc()).first()
 
         # Определение sort_index
-        sort_index = data.sort_index if data.sort_index is not None else (last_chapter.sort_index + 1 if last_chapter else 1)
+        sort_index = last_chapter.sort_index + 1 if last_chapter else 1
 
         # Создание объекта главы и добавление в базу данных
         chapter_create = ChapterModel(
@@ -449,18 +449,55 @@ async def update_chapter(chapter_id: int, data: lms_schemas.UpdateChapter, curre
             status_code=500,
         )
 
+class ChapterSortUpdate(BaseModel):
+    id: int
+    sort_index: int
+
+@lms_views.put("/update_chapters_sort_indexes/{course_id}")
+def update_chapters_sort_indexes(course_id: int, chapters: List[ChapterSortUpdate], db: Session = Depends(get_db)):
+    # Получить ID глав, которые принадлежат курсу
+    chapter_ids_in_course = db.query(ChapterModel.id).filter(ChapterModel.course_id == course_id).all()
+    valid_ids = {id for (id,) in chapter_ids_in_course}
+    
+    # Проверить, что все переданные ID принадлежат к указанному курсу
+    for chapter_update in chapters:
+        if chapter_update.id not in valid_ids:
+            raise HTTPException(status_code=404, detail=f"Chapter with id {chapter_update.id} does not belong to course {course_id}")
+
+    # Обновить сортировочные индексы для каждой главы
+    for chapter_update in chapters:
+        chapter = db.query(ChapterModel).filter(ChapterModel.id == chapter_update.id).first()
+        if chapter is None:
+            raise HTTPException(status_code=404, detail=f"Chapter with id {chapter_update.id} not found")
+        chapter.sort_index = chapter_update.sort_index
+        db.add(chapter)
+    
+    # Сохранить изменения в базе данных
+    db.commit()
+    
+    # Получить обновленный список глав
+    updated_chapters = teacher_lms_crud.get_course_chapters(db, course_id=course_id)
+    
+    return JSONResponse(
+        content={
+            "status": True,
+            "message": "Обновление сортировок прошло успешно.",
+            "data": updated_chapters
+        },
+        status_code=200
+    )
 
 @lms_views.delete("/delete-chapter/")
 async def delete_chapter(chapter_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         # Получаем главу по ID
-        chapter = db.query(ChapterModel).filter(ChapterModel.id == chapter_id).first()
+        chapter_to_delete = db.query(ChapterModel).filter(ChapterModel.id == chapter_id).first()
 
-        if not chapter:
+        if not chapter_to_delete:
             raise HTTPException(status_code=404, detail="Chapter not found")
 
         # Получаем курс через связанную главу
-        course = db.query(Course).filter(Course.id == chapter.course_id).first()
+        course = db.query(Course).filter(Course.id == chapter_to_delete.course_id).first()
 
         if not course:
             raise HTTPException(status_code=404, detail="Course not found")
@@ -470,9 +507,19 @@ async def delete_chapter(chapter_id: int, current_user: User = Depends(get_curre
             raise HTTPException(status_code=403, detail="You are not the owner of this course")
 
         # Удаляем главу
-        db.delete(chapter)
+        db.delete(chapter_to_delete)
+        db.commit()  # Сохраняем изменения после удаления
 
- 
+        # Получаем все оставшиеся главы курса, отсортированные по sort_index
+        remaining_chapters = db.query(ChapterModel).filter(
+            ChapterModel.course_id == course.id
+        ).order_by(ChapterModel.sort_index).all()
+
+        # Пересчитываем и обновляем индексы оставшихся глав
+        for new_index, chapter in enumerate(remaining_chapters):
+            chapter.sort_index = new_index + 1  # Обновляем sort_index начиная с 1
+            db.add(chapter)
+
         # Сохраняем изменения в базе данных
         db.commit()
 
@@ -482,6 +529,7 @@ async def delete_chapter(chapter_id: int, current_user: User = Depends(get_curre
             content={"status": False, "error": str(e)},
             status_code=500,
         )
+
     
 @lms_views.get("/module/")
 def read_module(module_id:int, db: Session = Depends(get_db)):
