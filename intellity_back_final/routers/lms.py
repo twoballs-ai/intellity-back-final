@@ -557,24 +557,30 @@ def add_module_to_chapter(data: lms_schemas.AddModule, current_user: User = Depe
         if course.teacher_id != current_user.id:
             raise HTTPException(status_code=403, detail="You are not the owner of this course")
 
+        # Получаем последний модуль в данной главе по полю sort_index
+        last_module = db.query(Module).filter(Module.chapter_id == data.chapter_id).order_by(Module.sort_index.desc()).first()
+
+        # Определяем sort_index
+        sort_index = last_module.sort_index + 1 if last_module else 1
+
         # Добавляем новый модуль
         module_create = Module(
             chapter_id=data.chapter_id,
             title=data.title,
-            sort_index=data.sort_index,
+            sort_index=sort_index,
             description=data.description
         )
         db.add(module_create)
 
-
         # Сохраняем изменения в базе данных
         db.commit()
+        db.refresh(module_create)  # Обновляем объект модуля после сохранения
 
         return JSONResponse(
             content={
                 "status": True,
                 "data": module_create.to_dict(),
-                "message":"Вы успешно добавили модуль"
+                "message": "Module added successfully"
             },
             status_code=200,
         )
@@ -630,6 +636,46 @@ async def update_module(module_id: int, data: lms_schemas.UpdateModule, current_
             content={"status": False, "error": str(e)},
             status_code=500,
         )
+
+class ModuleSortUpdate(BaseModel):
+    id: int
+    sort_index: int
+
+
+@lms_views.put("/update_modules_sort_indexes/{chapter_id}")
+def update_modules_sort_indexes(chapter_id: int, modules: List[ModuleSortUpdate], db: Session = Depends(get_db)):
+    # Get the IDs of the modules that belong to the chapter
+    module_ids_in_chapter = db.query(Module.id).filter(Module.chapter_id == chapter_id).all()
+    valid_ids = {id for (id,) in module_ids_in_chapter}
+
+    # Check that all provided IDs belong to the specified chapter
+    for module_update in modules:
+        if module_update.id not in valid_ids:
+            raise HTTPException(status_code=404, detail=f"Module with id {module_update.id} does not belong to chapter {chapter_id}")
+
+    # Update the sort indexes for each module
+    for module_update in modules:
+        module = db.query(Module).filter(Module.id == module_update.id).first()
+        if module is None:
+            raise HTTPException(status_code=404, detail=f"Module with id {module_update.id} not found")
+        module.sort_index = module_update.sort_index
+        db.add(module)
+
+    # Commit changes to the database
+    db.commit()
+
+    # Get the updated list of modules
+    updated_modules = db.query(Module).filter(Module.chapter_id == chapter_id).order_by(Module.sort_index).all()
+
+    return JSONResponse(
+        content={
+            "status": True,
+            "message": "Sort indexes updated successfully.",
+            "data": [module.to_dict() for module in updated_modules]
+        },
+        status_code=200
+    )
+
 
 @lms_views.patch("/patch-module/{module_id}")
 async def patch_module(module_id: int, data: lms_schemas.PatchModule, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

@@ -77,7 +77,6 @@ class UpdateChapter(BaseModel):
 
 class AddModule(BaseModel):
     title: str
-    sort_index: Optional[int] = None
     description: str
     chapter_id:int
 
