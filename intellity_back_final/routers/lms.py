@@ -487,48 +487,60 @@ def update_chapters_sort_indexes(course_id: int, chapters: List[ChapterSortUpdat
         status_code=200
     )
 
-@lms_views.delete("/delete-chapter/")
-async def delete_chapter(chapter_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@lms_views.delete("/delete-module/")
+def delete_module(module_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
-        # Получаем главу по ID
-        chapter_to_delete = db.query(ChapterModel).filter(ChapterModel.id == chapter_id).first()
+        module = db.query(Module).filter(Module.id == module_id).first()
+        if not module:
+            raise HTTPException(status_code=404, detail="Module not found")
 
-        if not chapter_to_delete:
+        # Get the chapter the module belongs to
+        chapter = db.query(ChapterModel).filter(ChapterModel.id == module.chapter_id).first()
+        if not chapter:
             raise HTTPException(status_code=404, detail="Chapter not found")
 
-        # Получаем курс через связанную главу
-        course = db.query(Course).filter(Course.id == chapter_to_delete.course_id).first()
-
+        # Get the course the chapter belongs to
+        course = db.query(Course).filter(Course.id == chapter.course_id).first()
         if not course:
             raise HTTPException(status_code=404, detail="Course not found")
 
-        # Проверяем права доступа
+        # Check access rights
         if course.teacher_id != current_user.id:
             raise HTTPException(status_code=403, detail="You are not the owner of this course")
 
-        # Удаляем главу
-        db.delete(chapter_to_delete)
-        db.commit()  # Сохраняем изменения после удаления
+        # Count the number of stages that will be deleted
+        total_stages = db.query(StageModel).filter(StageModel.module_id == module_id).count()
 
-        # Получаем все оставшиеся главы курса, отсортированные по sort_index
-        remaining_chapters = db.query(ChapterModel).filter(
-            ChapterModel.course_id == course.id
-        ).order_by(ChapterModel.sort_index).all()
+        # Delete the module
+        db.delete(module)
+        db.commit()  # Commit the deletion before reordering
 
-        # Пересчитываем и обновляем индексы оставшихся глав
-        for new_index, chapter in enumerate(remaining_chapters):
-            chapter.sort_index = new_index + 1  # Обновляем sort_index начиная с 1
-            db.add(chapter)
+        # Get remaining modules in the chapter, sorted by sort_index
+        remaining_modules = db.query(Module).filter(
+            Module.chapter_id == chapter.id
+        ).order_by(Module.sort_index).all()
 
-        # Сохраняем изменения в базе данных
+        # Recalculate and update sort indexes of remaining modules
+        for new_index, mod in enumerate(remaining_modules):
+            mod.sort_index = new_index + 1  # Update sort_index starting from 1
+            db.add(mod)
+
+        # Save changes to the database
         db.commit()
 
-        return JSONResponse(content={"status": True, "message": "Удаление главы произошло успешно."}, status_code=200)
+        return JSONResponse(
+            content={
+                "status": True,
+                "message": "Удаление модуля произошло успешно."
+            },
+            status_code=200,
+        )
     except Exception as e:
         return JSONResponse(
             content={"status": False, "error": str(e)},
             status_code=500,
         )
+
 
     
 @lms_views.get("/module/")
@@ -670,7 +682,7 @@ def update_modules_sort_indexes(chapter_id: int, modules: List[ModuleSortUpdate]
     return JSONResponse(
         content={
             "status": True,
-            "message": "Sort indexes updated successfully.",
+            "message": "Сортировка модулей обновлена успешно",
             "data": [module.to_dict() for module in updated_modules]
         },
         status_code=200
@@ -723,76 +735,6 @@ async def patch_module(module_id: int, data: lms_schemas.PatchModule, current_us
         )
 
 
-@lms_views.delete("/delete-module/")
-def delete_module(module_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    try:
-        module = db.query(Module).filter(Module.id == module_id).first()
-        if not module:
-            raise HTTPException(status_code=404, detail="Module not found")
-
-        # Получаем главу, к которой относится модуль
-        chapter = db.query(ChapterModel).filter(ChapterModel.id == module.chapter_id).first()
-        if not chapter:
-            raise HTTPException(status_code=404, detail="Chapter not found")
-
-        # Получаем курс, к которому относится глава
-        course = db.query(Course).filter(Course.id == chapter.course_id).first()
-        if not course:
-            raise HTTPException(status_code=404, detail="Course not found")
-
-        # Проверяем права доступа
-        if course.teacher_id != current_user.id:
-            raise HTTPException(status_code=403, detail="You are not the owner of this course")
-
-        # Считаем количество этапов, которые будут удалены
-        total_stages = db.query(StageModel).filter(StageModel.module_id == module_id).count()
-
-        # Удаляем модуль
-        db.delete(module)
-
-        # Сохраняем изменения в базе данных
-        db.commit()
-
-        return JSONResponse(
-            content={
-                "status": True,
-                "message":"Удаление модуля произошло успешно."
-            },
-            status_code=200,
-        )
-    except Exception as e:
-        return JSONResponse(
-            content={"status": False, "error": str(e)},
-            status_code=500,
-        )
-    
-
-@lms_views.post("/add_stage_to_module/classic_lesson/")
-async def create_and_associate_classic_lesson_route(data: lms_schemas.ClassicLesson, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    try:
-        module = db.query(Module).filter(Module.id == data.module_id).first()
-        if not module:
-            raise HTTPException(status_code=404, detail="Module not found")
-
-        chapter = db.query(ChapterModel).filter(ChapterModel.id == module.chapter_id).first()
-        if not chapter:
-            raise HTTPException(status_code=404, detail="Chapter not found")
-
-        course = db.query(Course).filter(Course.id == chapter.course_id).first()
-        if not course:
-            raise HTTPException(status_code=404, detail="Course not found")
-
-        if course.teacher_id != current_user.id:
-            raise HTTPException(status_code=403, detail="You are not the owner of this course")
-
-        new_classic_lesson = teacher_lms_crud.create_and_associate_classic_lesson(db, data)
-    
-
-        return {"message": "Вы успешно добавили классический урок", "data": new_classic_lesson}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 
 @lms_views.put("/update/classic_lesson/")
 async def update_classic_lesson(data: lms_schemas.ClassicLessonUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -828,31 +770,6 @@ async def update_classic_lesson(data: lms_schemas.ClassicLessonUpdate, current_u
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@lms_views.post("/add_stage_to_module/video_lesson/")
-async def create_and_associate_video_lesson_route(data: lms_schemas.VideoLesson, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    try:
-        module = db.query(Module).filter(Module.id == data.module_id).first()
-        if not module:
-            raise HTTPException(status_code=404, detail="Module not found")
-
-        chapter = db.query(ChapterModel).filter(ChapterModel.id == module.chapter_id).first()
-        if not chapter:
-            raise HTTPException(status_code=404, detail="Chapter not found")
-
-        course = db.query(Course).filter(Course.id == chapter.course_id).first()
-        if not course:
-            raise HTTPException(status_code=404, detail="Course not found")
-
-        if course.teacher_id != current_user.id:
-            raise HTTPException(status_code=403, detail="You are not the owner of this course")
-
-        new_video_lesson = teacher_lms_crud.create_and_associate_video_lesson(db, data)
-
-
-
-        return {"message": "Вы успешно добавили видео урок", "data": new_video_lesson}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @lms_views.put("/update/video_lesson/")
@@ -890,10 +807,16 @@ async def update_video_lesson(data: lms_schemas.VideoLessonUpdate, current_user:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@lms_views.post("/add_stage_to_module/quiz_lesson/")
-async def create_quiz_route(quiz: lms_schemas.QuizCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@lms_views.post("/add_stage_to_module/{lesson_type}/")
+async def create_and_associate_lesson_route(
+    lesson_type: str, 
+    data: Union[lms_schemas.ClassicLesson, lms_schemas.VideoLesson, lms_schemas.QuizCreate], 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
     try:
-        module = db.query(Module).filter(Module.id == quiz.module_id).first()
+        # Проверка модуля, главы и курса
+        module = db.query(Module).filter(Module.id == data.module_id).first()
         if not module:
             raise HTTPException(status_code=404, detail="Module not found")
 
@@ -908,12 +831,14 @@ async def create_quiz_route(quiz: lms_schemas.QuizCreate, current_user: User = D
         if course.teacher_id != current_user.id:
             raise HTTPException(status_code=403, detail="You are not the owner of this course")
 
-        new_quiz = teacher_lms_crud.create_quiz(db=db, quiz=quiz)
+        # Вызов соответствующего метода на основе типа урока
+        new_lesson, message = teacher_lms_crud.create_and_associate_lesson(db, lesson_type, data, module.id)
 
+        return {"message": message, "data": new_lesson}
 
-        return {"message": "Вы успешно добавили квиз", "data": new_quiz}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @lms_views.put("/update/quiz_lesson/")
 async def update_quiz_route(data: lms_schemas.QuizUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -952,21 +877,12 @@ async def update_quiz_route(data: lms_schemas.QuizUpdate, current_user: User = D
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# @lms_views.put("/update/quiz_lesson/")
-# async def update_quiz_route(quiz_update: lms_schemas.QuizUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-#     try:
-#         updated_quiz = teacher_lms_crud.update_quiz(db=db, quiz_update=quiz_update)
-#         return {"message": "Quiz updated successfully", "data": updated_quiz}
-#     except HTTPException as e:
-#         raise e
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
 
 @lms_views.delete("/delete-stage/{stage_id}")
 async def delete_stage(stage_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         stage = db.query(StageModel).filter(StageModel.id == stage_id).first()
-        
+
         if not stage:
             raise HTTPException(status_code=404, detail="Stage not found")
 
@@ -984,7 +900,15 @@ async def delete_stage(stage_id: int, current_user: User = Depends(get_current_u
 
         if course.teacher_id != current_user.id:
             raise HTTPException(status_code=403, detail="You are not the owner of this course")
+
+        # Delete the stage
         db.delete(stage)
+        db.commit()
+
+        # Recalculate sort_index for remaining stages in the module
+        remaining_stages = db.query(StageModel).filter(StageModel.module_id == module.id).order_by(StageModel.sort_index).all()
+        for index, remaining_stage in enumerate(remaining_stages, start=1):
+            remaining_stage.sort_index = index
         db.commit()
 
         return JSONResponse(content={"status": True, "message": "Stage deleted successfully."}, status_code=200)
@@ -993,6 +917,46 @@ async def delete_stage(stage_id: int, current_user: User = Depends(get_current_u
             content={"status": False, "message": str(e)},
             status_code=500,
         )
+
+
+class StageSortUpdate(BaseModel):
+    id: int
+    sort_index: int
+
+@lms_views.put("/update_stages_sort_indexes/{module_id}")
+def update_stages_sort_indexes(module_id: int, stages: List[StageSortUpdate], db: Session = Depends(get_db)):
+    # Get the IDs of the stages that belong to the module
+    stage_ids_in_module = db.query(StageModel.id).filter(StageModel.module_id == module_id).all()
+    valid_ids = {id for (id,) in stage_ids_in_module}
+
+    # Check that all provided IDs belong to the specified module
+    for stage_update in stages:
+        if stage_update.id not in valid_ids:
+            raise HTTPException(status_code=404, detail=f"Stage with id {stage_update.id} does not belong to module {module_id}")
+
+    # Update the sort indexes for each stage
+    for stage_update in stages:
+        stage = db.query(StageModel).filter(StageModel.id == stage_update.id).first()
+        if stage is None:
+            raise HTTPException(status_code=404, detail=f"Stage with id {stage_update.id} not found")
+        stage.sort_index = stage_update.sort_index
+        db.add(stage)
+
+    # Commit changes to the database
+    db.commit()
+
+    # Get the updated list of stages
+    updated_stages = db.query(StageModel).filter(StageModel.module_id == module_id).order_by(StageModel.sort_index).all()
+
+    return JSONResponse(
+        content={
+            "status": True,
+            "message": "Сортировка этапов обновлена успешно",
+            "data": [stage.to_dict() for stage in updated_stages]
+        },
+        status_code=200
+    )
+
 @lms_views.get("/stage/{stage_id}")
 def read_stage(stage_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     course = (

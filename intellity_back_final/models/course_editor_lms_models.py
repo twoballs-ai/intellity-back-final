@@ -189,7 +189,7 @@ class Stage(Base):
     type = Column(String(20))
     module_id = Column(Integer, ForeignKey("module_model.id", ondelete='CASCADE'))
     title = Column(String(30))
-
+    sort_index = Column(Integer, default=1)
     module = relationship("Module", back_populates="stages")
     stage_progress = relationship("StageProgress", back_populates="stage", cascade="all, delete-orphan") 
 
@@ -207,6 +207,7 @@ class Stage(Base):
             "module_id": self.module_id,
             "type": self.type,
             "title": self.title,
+            "sort_index":self.sort_index
         }
 
 
