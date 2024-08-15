@@ -487,59 +487,49 @@ def update_chapters_sort_indexes(course_id: int, chapters: List[ChapterSortUpdat
         status_code=200
     )
 
-@lms_views.delete("/delete-module/")
-def delete_module(module_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@lms_views.delete("/delete-chapter/")
+async def delete_chapter(chapter_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
-        module = db.query(Module).filter(Module.id == module_id).first()
-        if not module:
-            raise HTTPException(status_code=404, detail="Module not found")
+        # Получаем главу по ID
+        chapter_to_delete = db.query(ChapterModel).filter(ChapterModel.id == chapter_id).first()
 
-        # Get the chapter the module belongs to
-        chapter = db.query(ChapterModel).filter(ChapterModel.id == module.chapter_id).first()
-        if not chapter:
+        if not chapter_to_delete:
             raise HTTPException(status_code=404, detail="Chapter not found")
 
-        # Get the course the chapter belongs to
-        course = db.query(Course).filter(Course.id == chapter.course_id).first()
+        # Получаем курс через связанную главу
+        course = db.query(Course).filter(Course.id == chapter_to_delete.course_id).first()
+
         if not course:
             raise HTTPException(status_code=404, detail="Course not found")
 
-        # Check access rights
+        # Проверяем права доступа
         if course.teacher_id != current_user.id:
             raise HTTPException(status_code=403, detail="You are not the owner of this course")
 
-        # Count the number of stages that will be deleted
-        total_stages = db.query(StageModel).filter(StageModel.module_id == module_id).count()
+        # Удаляем главу
+        db.delete(chapter_to_delete)
+        db.commit()  # Сохраняем изменения после удаления
 
-        # Delete the module
-        db.delete(module)
-        db.commit()  # Commit the deletion before reordering
+        # Получаем все оставшиеся главы курса, отсортированные по sort_index
+        remaining_chapters = db.query(ChapterModel).filter(
+            ChapterModel.course_id == course.id
+        ).order_by(ChapterModel.sort_index).all()
 
-        # Get remaining modules in the chapter, sorted by sort_index
-        remaining_modules = db.query(Module).filter(
-            Module.chapter_id == chapter.id
-        ).order_by(Module.sort_index).all()
+        # Пересчитываем и обновляем индексы оставшихся глав
+        for new_index, chapter in enumerate(remaining_chapters):
+            chapter.sort_index = new_index + 1  # Обновляем sort_index начиная с 1
+            db.add(chapter)
 
-        # Recalculate and update sort indexes of remaining modules
-        for new_index, mod in enumerate(remaining_modules):
-            mod.sort_index = new_index + 1  # Update sort_index starting from 1
-            db.add(mod)
-
-        # Save changes to the database
+        # Сохраняем изменения в базе данных
         db.commit()
 
-        return JSONResponse(
-            content={
-                "status": True,
-                "message": "Удаление модуля произошло успешно."
-            },
-            status_code=200,
-        )
+        return JSONResponse(content={"status": True, "message": "Удаление главы произошло успешно."}, status_code=200)
     except Exception as e:
         return JSONResponse(
             content={"status": False, "error": str(e)},
             status_code=500,
         )
+
 
 
     
@@ -734,6 +724,59 @@ async def patch_module(module_id: int, data: lms_schemas.PatchModule, current_us
             status_code=500,
         )
 
+@lms_views.delete("/delete-module/")
+def delete_module(module_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    try:
+        module = db.query(Module).filter(Module.id == module_id).first()
+        if not module:
+            raise HTTPException(status_code=404, detail="Module not found")
+
+        # Get the chapter the module belongs to
+        chapter = db.query(ChapterModel).filter(ChapterModel.id == module.chapter_id).first()
+        if not chapter:
+            raise HTTPException(status_code=404, detail="Chapter not found")
+
+        # Get the course the chapter belongs to
+        course = db.query(Course).filter(Course.id == chapter.course_id).first()
+        if not course:
+            raise HTTPException(status_code=404, detail="Course not found")
+
+        # Check access rights
+        if course.teacher_id != current_user.id:
+            raise HTTPException(status_code=403, detail="You are not the owner of this course")
+
+        # Count the number of stages that will be deleted
+        total_stages = db.query(StageModel).filter(StageModel.module_id == module_id).count()
+
+        # Delete the module
+        db.delete(module)
+        db.commit()  # Commit the deletion before reordering
+
+        # Get remaining modules in the chapter, sorted by sort_index
+        remaining_modules = db.query(Module).filter(
+            Module.chapter_id == chapter.id
+        ).order_by(Module.sort_index).all()
+
+        # Recalculate and update sort indexes of remaining modules
+        for new_index, mod in enumerate(remaining_modules):
+            mod.sort_index = new_index + 1  # Update sort_index starting from 1
+            db.add(mod)
+
+        # Save changes to the database
+        db.commit()
+
+        return JSONResponse(
+            content={
+                "status": True,
+                "message": "Удаление модуля произошло успешно."
+            },
+            status_code=200,
+        )
+    except Exception as e:
+        return JSONResponse(
+            content={"status": False, "error": str(e)},
+            status_code=500,
+        )
 
 
 @lms_views.put("/update/classic_lesson/")
