@@ -8,7 +8,7 @@ from intellity_back_final.utils.utils import log_action
 
 from ..models import course_editor_lms_models
 from ..schemas import lms_schemas
-from typing import List
+from typing import List, Union
 
 
 def get_category(db: Session, category_id: int):
@@ -129,13 +129,32 @@ def get_get_module_by_id(db: Session, module_id: int):
     return db.query(course_editor_lms_models.Module).filter_by(id = module_id).first()
 
 
+def create_and_associate_lesson(
+    db: Session, 
+    lesson_type: str, 
+    data: Union[lms_schemas.ClassicLesson, lms_schemas.VideoLesson, lms_schemas.QuizCreate], 
+    module_id: int
+):
+    # Определяем sort_index
+    last_stage = db.query(course_editor_lms_models.Stage).filter(course_editor_lms_models.Stage.module_id == module_id).order_by(course_editor_lms_models.Stage.sort_index.desc()).first()
+    sort_index = last_stage.sort_index + 1 if last_stage else 1
 
-def create_and_associate_classic_lesson(db: Session, data: lms_schemas.ClassicLesson) -> course_editor_lms_models.ClassicLesson:
-    classic_lesson = course_editor_lms_models.ClassicLesson(module_id=data.module_id, title=data.title, html_code_text=data.html_code_text)
-    db.add(classic_lesson)
+    if lesson_type == "classic_lesson":
+        lesson = course_editor_lms_models.ClassicLesson(module_id=module_id, title=data.title, html_code_text=data.html_code_text, sort_index=sort_index)
+        message = "Вы успешно добавили классический урок"
+    elif lesson_type == "video_lesson":
+        lesson = course_editor_lms_models.VideoLesson(module_id=module_id, title=data.title, video_link=data.video_link, sort_index=sort_index)
+        message = "Вы успешно добавили видео урок"
+    elif lesson_type == "quiz_lesson":
+        lesson = course_editor_lms_models.QuizLesson(module_id=module_id, title=data.title, sort_index=sort_index)
+        message = "Вы успешно добавили квиз"
+    else:
+        raise HTTPException(status_code=400, detail="Invalid lesson type")
+    
+    db.add(lesson)
     db.commit()
-    db.refresh(classic_lesson)
-    return classic_lesson.to_dict()
+    db.refresh(lesson)
+    return lesson.to_dict(), message
 
 def update_classic_lesson(db: Session, data: lms_schemas.ClassicLessonUpdate) -> dict:
     classic_lesson = db.query(course_editor_lms_models.ClassicLesson).filter_by(id=data.stage_id).first()
@@ -146,14 +165,6 @@ def update_classic_lesson(db: Session, data: lms_schemas.ClassicLessonUpdate) ->
     db.commit()
     db.refresh(classic_lesson)
     return classic_lesson.to_dict()
-
-
-def create_and_associate_video_lesson(db: Session, data: lms_schemas.VideoLesson) -> course_editor_lms_models.VideoLesson:
-    video_lesson = course_editor_lms_models.VideoLesson(module_id=data.module_id, title=data.title, video_link=data.video_link)
-    db.add(video_lesson)
-    db.commit()
-    db.refresh(video_lesson)
-    return video_lesson.to_dict()
 
 def update_video_lesson(db: Session, data: lms_schemas.VideoLessonUpdate) -> dict:
     video_lesson = db.query(course_editor_lms_models.VideoLesson).filter_by(id=data.stage_id).first()
@@ -166,51 +177,6 @@ def update_video_lesson(db: Session, data: lms_schemas.VideoLessonUpdate) -> dic
     return video_lesson.to_dict()
 
 
-def create_quiz(db: Session, quiz: lms_schemas.QuizCreate):
-    db_quiz = course_editor_lms_models.QuizLesson(module_id=quiz.module_id, title=quiz.title)
-    db.add(db_quiz)
-    db.commit()
-    db.refresh(db_quiz)
-    return db_quiz.to_dict()
-
-
-# def update_quiz(db: Session, quiz_update: lms_schemas.QuizUpdate):
-#     # Получение quiz по его id
-#     quiz = db.query(course_editor_lms_models.QuizLesson).filter(course_editor_lms_models.QuizLesson.id == quiz_update.quiz_id).first()
-#     if not quiz:
-#         raise HTTPException(status_code=404, detail="Quiz not found")
-
-#     # Получение quiz_type_id на основе quiz_type
-#     quiz_type = db.query(course_editor_lms_models.QuizType).filter(course_editor_lms_models.QuizType.name == quiz_update.quiz_type).first()
-#     if not quiz_type:
-#         raise HTTPException(status_code=404, detail="Quiz type not found")
-
-#     # Обновление полей quiz
-#     quiz.quiz_type_id = quiz_type.id
-#     quiz.question = quiz_update.question
-
-#     # Проверка на тип "radio" и количество правильных ответов
-#     if quiz_type.name == "radio":
-#         true_answers_count = sum(1 for q in quiz_update.answers if q.is_true_answer)
-#         if true_answers_count > 1:
-#             raise HTTPException(status_code=400, detail="For 'radio' type quiz, only one answer can be true")
-
-#     # Удаление существующих ответов
-#     db.query(course_editor_lms_models.Answer).filter(course_editor_lms_models.Answer.quiz_id == quiz.id).delete()
-
-#     # Добавление новых ответов с порядком из frontend
-#     for answer_data in quiz_update.answers:
-#         answer = course_editor_lms_models.Answer(
-#             quiz_id=quiz.id,
-#             answer_text=answer_data.answer_text,
-#             order=answer_data.order,
-#             is_true_answer=answer_data.is_true_answer
-#         )
-#         db.add(answer)
-    
-#     db.commit()
-#     db.refresh(quiz)
-#     return quiz.to_dict()
 def update_quiz(db: Session, data: lms_schemas.QuizUpdate):
     # Получение quiz по его id
     quiz_lesson = db.query(course_editor_lms_models.QuizLesson).filter_by(id=data.stage_id).first()
