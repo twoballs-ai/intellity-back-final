@@ -2,6 +2,11 @@ from sqlalchemy.orm import Session
 from intellity_back_final.models.user_models import Privilege, Role
 
 def initialize_roles_and_privileges(db: Session):
+    # Check if roles already exist
+    if db.query(Role).first():
+        print("Roles and privileges are already initialized.")
+        return
+
     # Function to get or create a privilege
     def get_or_create_privilege(name: str):
         privilege = db.query(Privilege).filter_by(name=name).first()
@@ -47,3 +52,4 @@ def initialize_roles_and_privileges(db: Session):
     guest_role.privileges = [p for p in privileges if p.name == "View Reports"]
 
     db.commit()
+    print("Roles and privileges have been successfully initialized.")

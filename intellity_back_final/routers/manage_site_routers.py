@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 import json
 
 from intellity_back_final.auth import role_checker
+from intellity_back_final.fixtures_and_autocreates.role_init import initialize_roles_and_privileges
 from intellity_back_final.models.course_editor_lms_models import Course, CourseCategory, Module, Stage as StageModel, Answer as AnswerModel, QuizLesson as QuizLessonModel
 import logging
 
@@ -69,3 +70,12 @@ def create_course_category(
     
 
     return new_category
+
+#Эту функцию достаточно включать один раз что бы выполнить на начальном этапе.Этакая фикстура
+# @manage_site_views.post("/initialize_roles_and_privileges/")
+# def initialize_roles_and_privileges_endpoint(db: Session = Depends(get_db)):
+#     try:
+#         initialize_roles_and_privileges(db)
+#         return {"status": "success", "message": "Roles and privileges initialized."}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
