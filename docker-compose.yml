@@ -5,9 +5,11 @@ services:
     build: .
     environment:
       - SQLALCHEMY_DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@80.78.243.39:5432/courserio_db
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
     networks:
       - courserio_network
-    restart: unless-stopped
 
 networks:
   courserio_network:
