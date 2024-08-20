@@ -4,22 +4,13 @@ services:
   backend:
     build: .
     environment:
-      - SQLALCHEMY_DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@95.163.222.197:5432/intellity_db
+      - SQLALCHEMY_DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@80.78.243.39:5432/courserio_db
     ports:
       - "8000:8000"
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`backend.intellity.ru`)"
-      - "traefik.http.routers.backend.entrypoints=web"
-      - "traefik.http.routers.backend.middlewares=https-redirect"
-      - "traefik.http.routers.backend-secure.rule=Host(`backend.intellity.ru`)"
-      - "traefik.http.routers.backend-secure.entrypoints=websecure"
-      - "traefik.http.routers.backend-secure.tls.certresolver=myresolver"
-      - "traefik.http.services.backend.loadbalancer.server.port=8000"
     networks:
-      - intellity_network
+      - courserio_network
 
 networks:
-  intellity_network:
+  courserio_network:
     external: true
