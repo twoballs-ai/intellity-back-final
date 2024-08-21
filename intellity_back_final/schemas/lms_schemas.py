@@ -67,7 +67,7 @@ class AddChapter(BaseModel):
 
 
 class UpdateChapter(BaseModel):
-    title: Optional[str] = Field(None, max_length=30)
+    title: Optional[str] = Field(None, max_length=100)
     description: Optional[str] = None
     sort_index: Optional[int] = None
     is_exam: Optional[bool] = None
