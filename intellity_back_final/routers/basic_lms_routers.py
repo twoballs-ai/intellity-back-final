@@ -1,5 +1,8 @@
+from io import BytesIO
+import os
 from sqlalchemy.orm import Session
 from datetime import datetime
+from intellity_back_final.Minio import download_file
 from intellity_back_final.crud.basic_lms_crud import get_courses_by_cat, get_recent_courses
 from intellity_back_final.crud.checker_course_lms_crud import are_all_chapters_completed, are_all_lessons_completed, are_all_modules_completed, is_course_completed
 from intellity_back_final.crud.student_lms_crud import enroll_student_in_course, update_chapter_progress, update_module_progress, update_stage_progress
@@ -22,7 +25,7 @@ from datetime import datetime
 from typing import List, Optional
 import asyncio
 from sqlalchemy import and_, func
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -139,3 +142,27 @@ def read_courses(skip: int = 0, limit: int = 100, category_id: Optional[int] = N
         },
         status_code=200,
     )
+
+@basic_handle_views.get("/course-cover/{file_path:path}")
+async def serve_course_image(file_path: str):
+    """
+    Serve an image stored in MinIO based on the provided file path.
+
+    Args:
+        file_path (str): The path to the image file in MinIO, URL-encoded.
+
+    Returns:
+        StreamingResponse: The image file streamed to the client.
+    """
+ 
+    try:
+        # Fetch the image from MinIO
+        response = download_file(file_path)
+        image_data = BytesIO(response.read())
+        response.close()
+        response.release_conn()
+
+        # Serve the image
+        return StreamingResponse(image_data, media_type="image/png")  # Adjust media_type if necessary
+    except Exception as e:
+        raise HTTPException(status_code=404, detail="Image not found")

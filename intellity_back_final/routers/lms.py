@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 import json
 
+from intellity_back_final.Minio import create_course_directory, upload_image
 from intellity_back_final.auth import type_checker
 from intellity_back_final.models.course_editor_lms_models import Course, CourseCategory, Module, Stage as StageModel, Answer as AnswerModel, QuizLesson as QuizLessonModel
 import logging
@@ -116,7 +117,7 @@ def read_courses(course_id: int, current_user: User = Depends(get_current_user),
 
 
 @lms_views.post("/course/")
-def create_course_category(
+def create_course(
     title: str = Form(..., max_length=30),
     description: str = Form(None),
     category: int = Form(...),
@@ -124,6 +125,7 @@ def create_course_category(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
+    # Validate the file type
     if file.content_type not in ["image/jpeg", "image/png"]:
         raise HTTPException(status_code=400, detail="Invalid file type. Only JPEG and PNG files are allowed.")
 
@@ -131,10 +133,11 @@ def create_course_category(
     try:
         with PILImage.open(file.file) as img:
             img.verify()
-            file.file.seek(0)  # Reset file pointer to beginning after verify
+            file.file.seek(0)  # Reset file pointer to beginning after verification
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid image file.")
 
+    # Check if the course already exists
     search_course = teacher_lms_crud.get_course_by_title(db, title=title)
     if search_course:
         raise HTTPException(status_code=400, detail="Course already exists")
@@ -142,6 +145,7 @@ def create_course_category(
     # Set default status_id if not provided
     default_status_id = 1
 
+    # Create the course in the database
     course_create = teacher_lms_crud.create_course(
         db=db,
         course=lms_schemas.CourseCreate(title=title, description=description, category=category, status_id=default_status_id),
@@ -153,22 +157,28 @@ def create_course_category(
         raise HTTPException(status_code=404, detail="Course not found")
 
     course_id = course_create.id
-    course_title = course_create.title
-    course_directory_name = f"{course_id}_{current_user.id}"
-    course_directory_path = os.path.join(UPLOAD_DIRECTORY, course_directory_name)
-    covers_directory_path = os.path.join(course_directory_path, "covers")
-    media_directory_path = os.path.join(course_directory_path, "media")
 
-    os.makedirs(covers_directory_path, exist_ok=True)
-    os.makedirs(media_directory_path, exist_ok=True)
+    # Create course directory structure in MinIO
+    try:
+        course_directory_name, covers_directory_name = create_course_directory(course_id, current_user.id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    file_location = os.path.join(covers_directory_path, file.filename)
+    # Upload the cover image to MinIO
+    try:
+        file.file.seek(0)  # Ensure the file pointer is at the beginning
+        file_data = file.file.read()
+        cover_image_path = upload_image(
+            file_name=file.filename,
+            file_data=file_data,
+            content_type=file.content_type,
+            directory_name=covers_directory_name
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload cover image: {e}")
 
-    with open(file_location, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    # Update course with correct cover path
-    course_create.cover_path = file_location
+    # Update the course record with the cover image path
+    course_create.cover_path = cover_image_path
     db.commit()
     db.refresh(course_create)
 
@@ -176,7 +186,7 @@ def create_course_category(
         content={
             "status": True,
             "data": course_create.to_dict(),
-            "message": "Вы добавили курс"
+            "message": "You have successfully added the course."
         },
         status_code=200,
     )
@@ -209,27 +219,18 @@ def update_course(
     if course.teacher_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to update this course")
 
+    # Assume the directory for the course already exists
+    covers_directory_name = f"{course_id}_{course.teacher_id}/covers/"
+
+    # Upload the new cover image to MinIO
+    file_data = file.file.read()
+    image_url = upload_image(file.filename, file_data, file.content_type, covers_directory_name)
+
     # Update course fields
     course.title = title
     course.description = description
-    course.cover_image_name=file.filename,
-    # Update cover image
-    course_directory_name = f"{course_id}_{course.teacher_id}"
-    course_directory_path = os.path.join(UPLOAD_DIRECTORY, course_directory_name)
-    covers_directory_path = os.path.join(course_directory_path, "covers")
-
-    os.makedirs(covers_directory_path, exist_ok=True)
-
-    file_location = os.path.join(covers_directory_path, file.filename)
-
-    # Delete the old cover image if it exists
-    if course.cover_path and os.path.exists(course.cover_path):
-        os.remove(course.cover_path)
-
-    with open(file_location, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    course.cover_path = file_location
+    course.cover_image_name = file.filename
+    course.cover_path = image_url
 
     db.commit()
     db.refresh(course)

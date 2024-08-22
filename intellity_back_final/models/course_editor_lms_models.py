@@ -76,6 +76,8 @@ class Course(Base):
         return self.title
 
     def to_dict(self):
+        cover_path = f"{self.id}_{self.teacher_id}/covers/{self.cover_image_name}" if self.cover_image_name else None
+
         return {
             "id": self.id,
             "title": self.title,
@@ -86,17 +88,16 @@ class Course(Base):
             "total_modules": self.total_modules,
             "total_stages": self.total_stages,
             "cover_image_name": self.cover_image_name,
-            "cover_path": self.cover_path,
-            "status": self.status_model.status if self.status_model else None, 
-            "moderation_status": self.modeation_status_model.status if self.modeation_status_model else None, # Include the status here
+            "cover_path": f"api/v1/base/course-cover/{cover_path}" if cover_path else None,
+            "status": self.status_model.status if self.status_model else None,
+            "moderation_status": self.modeation_status_model.status if self.modeation_status_model else None,
             "category": self.category_model.title if self.category else None,
             "teacher": {
                 "name": self.teacher_model.name if self.teacher_model else None,
                 "lastname": self.teacher_model.lastName if self.teacher_model else None,
                 "id": self.teacher_id if self.teacher_id else None,
-            },
-        }
-    
+                },
+            }
 
 
 class CourseStatus(Base):
