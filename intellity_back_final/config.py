@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     MAIL_TLS: bool
     MAIL_SSL: bool
 
+    MINIO_URL: str
+    MINIO_ACCESS_KEY: str
+    MINIO_SECRET_KEY: str
     class Config:
         env_file = ".env"
 
