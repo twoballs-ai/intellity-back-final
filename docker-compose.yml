@@ -6,8 +6,7 @@ services:
     environment:
       - SQLALCHEMY_DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@80.78.243.39:5432/courserio_db
       - MINIO_URL=80.78.243.39:9000
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadminUEssa09984!
+
     ports:
       - "8000:8000"
     restart: unless-stopped
