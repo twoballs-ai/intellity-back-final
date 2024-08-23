@@ -11,7 +11,7 @@ class BlogCategory(Base):
     __tablename__ = "blog_category_model"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    title = Column(String(30), unique=True)
+    title = Column(String(100), unique=True)
 
     blogs = relationship("Blog", back_populates="category")
 
@@ -52,6 +52,7 @@ class Blog(Base):
             "id":self.id,
             "title": self.title,
             "content": self.content,
+            "category":self.category.title,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "author": self.owner.email
