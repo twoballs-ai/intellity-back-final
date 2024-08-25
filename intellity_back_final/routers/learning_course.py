@@ -36,7 +36,7 @@ from intellity_back_final.models.course_editor_lms_models import Course as Cours
 from ..database import SessionLocal
 from ..crud import teacher_lms_crud
 from ..schemas import lms_schemas
-from ..models.course_editor_lms_models import Answer, Chapter as ChapterModel, QuizLesson
+from ..models.course_editor_lms_models import Answer, Chapter as ChapterModel, Course, QuizLesson
 from intellity_back_final.models.user_models import Student, User
 study_course_views = APIRouter()
 
@@ -53,7 +53,15 @@ def get_db():
 def get_enrolled_courses(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     enrollments = db.query(CourseEnrollment).filter(CourseEnrollment.student_id == current_user.id).all()
     if not enrollments:
-        raise HTTPException(status_code=404, detail="Student not found or not enrolled in any courses")
+        return JSONResponse(
+        content={
+            "status": False,
+            "message": "вы не подписаны не на один курс",
+            "data":[]
+        },
+        status_code=200,
+    )
+
     courses = [enrollment.course_model.to_dict()  for enrollment in enrollments]
     return JSONResponse(
         content={
@@ -208,8 +216,70 @@ def enroll_student(course_id: int, current_user: User = Depends(get_current_user
 
 
 
+@study_course_views.delete("/unsubscribe/{course_id}")
+def unsubscribe_student(course_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    student = db.query(Student).get(current_user.id)
+    course = db.query(Course).get(course_id)
+    
+    if not student or not course:
+        raise HTTPException(status_code=404, detail="Student or Course not found")
+    
+    enrollment = db.query(CourseEnrollment).filter_by(student_id=student.id, course_id=course_id).first()
+    
+    if not enrollment:
+        raise HTTPException(status_code=400, detail="Student is not enrolled in this course")
+    
+    # Delete all associated progress
+    db.query(ChapterProgress).filter_by(student_id=student.id, chapter_id=enrollment.course_id).delete()
+    db.query(ModuleProgress).filter_by(student_id=student.id, module_id=enrollment.course_id).delete()
+    db.query(StageProgress).filter_by(student_id=student.id, stage_id=enrollment.course_id).delete()
+    
+    # Delete enrollment
+    db.delete(enrollment)
+    
+    # Decrement subscription counter
+    if enrollment.is_active == True:
+        course.subscription_counter -= 1
+    
+    db.commit()
+
+    return JSONResponse(
+        content={
+            "status": True,
+            "message": "Вы успешно отписались от курса и весь ваш прогресс был удален.",
+            "enrolled_status": "unenrolled"
+        },
+        status_code=200,
+    )
 
 
+@study_course_views.patch("/unenroll/light/{course_id}")
+def unenroll_student_light(course_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    student = db.query(Student).get(current_user.id)
+    course = db.query(CourseModel).get(course_id)
+
+    if not student or not course:
+        raise HTTPException(status_code=404, detail="Student or Course not found")
+
+    enrollment = db.query(CourseEnrollment).filter_by(student_id=student.id, course_id=course_id).first()
+    if not enrollment:
+        raise HTTPException(status_code=400, detail="Student is not enrolled in this course")
+
+    # Set enrollment to inactive
+    enrollment.is_active = False
+
+    # Decrease subscription counter
+    course.subscription_counter -= 1
+
+    db.commit()
+    
+    return JSONResponse(
+        content={
+            "status": True,
+            "message": "You have successfully unenrolled from the course."
+        },
+        status_code=200,
+    )
 
 @study_course_views.post("/update_chapter/{chapter_id}")
 def update_chapter(student_id: int, chapter_id: int, is_completed: bool, db: Session = Depends(get_db)):

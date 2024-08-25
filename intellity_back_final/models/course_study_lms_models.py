@@ -32,6 +32,7 @@ class CourseEnrollment(Base):
     student_id: Mapped[int] = mapped_column(ForeignKey("student_model.id"))
     enrolled_time: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), index=True)
     progress: Mapped[float] = mapped_column(Float, default=0.0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
 
     course_model: Mapped["Course"] = relationship("Course", back_populates="enrollments_model")
@@ -47,6 +48,7 @@ class CourseEnrollment(Base):
             "student_id": self.student_id,
             "enrolled_time": self.enrolled_time.isoformat() if self.enrolled_time else None,
             "progress": self.progress,
+            "is_active": self.is_active,
             "is_completed": self.is_completed,
             "course": {
                 "id": self.course_model.id,
