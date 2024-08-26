@@ -78,23 +78,32 @@ def check_enrollment(course_id: int, current_user: User = Depends(get_current_us
     enrollment = db.query(CourseEnrollment).filter_by(course_id=course_id, student_id=student_id).first()
     
     if enrollment:
+        if enrollment.is_active:
+            return JSONResponse(
+                content={
+                    "status": True,
+                    "data": enrollment.to_dict(),
+                    "enrolled_status": "enrolled"
+                },
+                status_code=200,
+            )
+        else:
+            return JSONResponse(
+                content={
+                    "status": False,
+                    "enrolled_status": "not enrolled"
+                },
+                status_code=200,
+            )
+    else:
         return JSONResponse(
             content={
-                "status": True,
-                "data": enrollment.to_dict(),
-                "enrolled_status":"enrolled"
+                "status": False,
+                "enrolled_status": "not enrolled"
             },
             status_code=200,
         )
 
-    else:
-        return JSONResponse(
-            content={
-                "status":False,
-                "enrolled_status":"not enrolled"
-            },
-            status_code=200,
-        )
     
 @study_course_views.get("/learning-course-chapter-list/{course_id}")
 def read_chapter(course_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -189,30 +198,48 @@ def read_stages(module_id: int, current_user: User = Depends(get_current_user), 
 def enroll_student(course_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     student = db.query(Student).get(current_user.id)
     course = db.query(CourseModel).get(course_id)
+    
     if not student or not course:
         raise HTTPException(status_code=404, detail="Student or Course not found")
     
     enrollment = get_course_enrollment(db, student.id, course_id)
+    
     if enrollment:
-        return JSONResponse(
-            content={
-                "status": False,
-                "data": "Student is already enrolled in this course",
-                
-            },
-            status_code=400,
-        )
-
+        if enrollment.is_active:
+            return JSONResponse(
+                content={
+                    "status": False,
+                    "data": "Student is already enrolled in this course",
+                    "enrolled_status": "enrolled"
+                },
+                status_code=400,
+            )
+        else:
+            # Если студент уже зарегистрирован, но запись не активна
+            course.subscription_counter += 1
+            enrollment.is_active = True
+            db.commit()
+            return JSONResponse(
+                content={
+                    "status": True,
+                    "data": enrollment.to_dict(),
+                    "message": "Вы снова подписались на курс",
+                    "enrolled_status": "enrolled"
+                },
+                status_code=200,
+            )
+    
     enroll = enroll_student_in_course(db, student.id, course_id)
     return JSONResponse(
         content={
             "status": True,
             "data": enroll.to_dict(),
-            "message":"Вы успешно подписались на курс",
-            "enrolled_status":"enrolled"
+            "message": "Вы успешно подписались на курс",
+            "enrolled_status": "enrolled"
         },
         status_code=200,
     )
+
 
 
 
