@@ -26,7 +26,7 @@ def enroll_student_in_course(db: Session, student_id: int, course_id: int):
         course_id=course_id,
         enrolled_time=datetime.utcnow(),
         progress=0.0,
-        is_active=False,
+        is_active=True,  # Устанавливаем is_active в True при первой подписке
         is_completed=False
     )
     
