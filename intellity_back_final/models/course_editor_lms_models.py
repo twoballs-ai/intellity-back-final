@@ -25,7 +25,7 @@ class CourseCategory(Base):
     __tablename__ = "course_category_model"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    title = Column(String(30), unique=True)
+    title = Column(String(50), unique=True)
     description = Column(Text)
 
     # Define reverse relationship

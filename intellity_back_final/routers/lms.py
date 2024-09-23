@@ -118,7 +118,7 @@ def read_courses(course_id: int, current_user: User = Depends(get_current_user),
 
 @lms_views.post("/course/")
 def create_course(
-    title: str = Form(..., max_length=30),
+    title: str = Form(..., max_length=100),
     description: str = Form(None),
     category: int = Form(...),
     current_user: User = Depends(type_checker(["teacher_model"])),
