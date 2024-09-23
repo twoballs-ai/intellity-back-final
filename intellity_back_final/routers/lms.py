@@ -151,7 +151,7 @@ def create_course(
         course=lms_schemas.CourseCreate(title=title, description=description, category=category, status_id=default_status_id),
         user_id=current_user.id,
         cover_image_name=file.filename,
-        cover_path=""
+
     )
     if not course_create:
         raise HTTPException(status_code=404, detail="Course not found")

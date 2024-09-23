@@ -65,7 +65,7 @@ def get_course_by_title(db: Session, title: str):
 def get_course_by_id(db: Session, course_id: int):
     return db.query(course_editor_lms_models.Course).filter_by(id = course_id).first()
 
-def create_course(db: Session, course: lms_schemas.CourseCreate, user_id: int, cover_image_name: str, cover_path: str):
+def create_course(db: Session, course: lms_schemas.CourseCreate, user_id: int, cover_image_name: str):
     db_course = course_editor_lms_models.Course(
         teacher_id=user_id,
         status_id=course.status_id,
@@ -73,7 +73,6 @@ def create_course(db: Session, course: lms_schemas.CourseCreate, user_id: int, c
         title=course.title,
         description=course.description,
         cover_image_name=cover_image_name,
-        cover_path=cover_path
     )
     db.add(db_course)
     db.commit()
