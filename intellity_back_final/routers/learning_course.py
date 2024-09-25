@@ -103,6 +103,52 @@ def check_enrollment(course_id: int, current_user: User = Depends(get_current_us
             },
             status_code=200,
         )
+@study_course_views.patch("/chapter_start/{chapter_id}")
+def update_chapter_progress(chapter_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Получаем главу по ID
+    chapter = db.query(ChapterModel).filter_by(id=chapter_id).first()
+    
+    if chapter is None:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+    
+    # Получаем ID курса, к которому принадлежит глава
+    course_id = chapter.course_id
+
+    # Проверяем, подписан ли студент на курс
+    course_enrollment = db.query(CourseEnrollment).filter(
+        CourseEnrollment.course_id == course_id,
+        CourseEnrollment.student_id == current_user.id
+    ).first()
+    
+    if not course_enrollment:
+        raise HTTPException(status_code=403, detail="You are not enrolled in this course")
+    
+    # Проверяем прогресс по главе или создаем новый, если его нет
+    progress = db.query(ChapterProgress).filter_by(student_id=current_user.id, chapter_id=chapter_id).first()
+
+    if progress:
+        # Если прогресс есть, но start_time равен None, обновляем его
+        if progress.start_time is None:
+            progress.start_time = datetime.utcnow()
+            db.commit()
+            db.refresh(progress)
+    
+    # Возвращаем информацию о главе и прогрессе
+    chapter_data = chapter.to_dict()
+    chapter_data['progress'] = {
+        'start_time': progress.start_time.isoformat() if progress.start_time else None,
+        'is_completed': progress.is_completed,
+        'end_time': progress.end_time.isoformat() if progress.end_time else None,
+    }
+
+    return JSONResponse(
+        content={
+            "status": True,
+            "data": chapter_data,
+        },
+        status_code=200,
+    )
+
 
     
 @study_course_views.get("/learning-course-chapter-list/{course_id}")
@@ -114,7 +160,6 @@ def read_chapter(course_id: int, current_user: User = Depends(get_current_user),
     module_progress = {mp.module_id: mp for mp in current_user.module_progress}
 
     chapters_with_access = []
-    previous_chapter_completed = True  # Для первой главы
 
     for index, chapter in enumerate(chapters):
         chapter_data = chapter.to_dict()
@@ -122,10 +167,12 @@ def read_chapter(course_id: int, current_user: User = Depends(get_current_user),
         chapter_data['all_modules_completed'] = False
         chapter_data['exam_status'] = {}
 
+
         # Прогресс по текущей главе
         progress = chapter_progress.get(chapter.id)
         if progress:
             chapter_data['chapter_is_completed'] = progress.is_completed
+            chapter_data['is_locked'] = progress.is_locked  # Берём статус блокировки из прогресса
 
         # Обработка экзаменов
         if chapter.is_exam:
@@ -135,17 +182,10 @@ def read_chapter(course_id: int, current_user: User = Depends(get_current_user),
                 'exam_completed': progress.is_completed if progress else False
             }
 
-            # Экзамен блокируется, если предыдущие главы не завершены
-            chapter_data['is_locked'] = not previous_chapter_completed
-        else:
-            # Обычные главы не блокируются
-            chapter_data['is_locked'] = False
-
         # Обработка модулей в главе
         chapter_data['modules'] = []
         for module in chapter.modules:
             module_data = module.to_dict()
-            module_data['is_locked'] = chapter_data['is_locked']
             module_data['is_completed'] = False
 
             if module.id in module_progress:
@@ -155,14 +195,9 @@ def read_chapter(course_id: int, current_user: User = Depends(get_current_user),
 
         chapter_data['all_modules_completed'] = all(module['is_completed'] for module in chapter_data['modules'])
 
-        # Определяем, завершена ли текущая глава или все модули в ней
-        if not chapter.is_exam:
-            previous_chapter_completed = chapter_data['chapter_is_completed'] or chapter_data['all_modules_completed']
-
         chapters_with_access.append(chapter_data)
 
     return {"data": chapters_with_access}
-
 
 
 @study_course_views.get("/module-stage-list/{module_id}")
@@ -184,7 +219,17 @@ def read_stages(module_id: int, current_user: User = Depends(get_current_user), 
         
         if not course_enrollment:
             raise HTTPException(status_code=403, detail="You are not enrolled in this course")
-
+        
+        # Check if progress exists
+        progress = db.query(ModuleProgress).filter_by(student_id=current_user.id, module_id=module_id).first()
+        if progress:
+            # If start_time is empty or null, set it to the current time
+            if progress.start_time is None:
+                progress.start_time = datetime.utcnow()
+                db.commit()
+                db.refresh(progress)
+        
+        # Retrieve the module stages
         module_stages = student_lms_crud.get_course_chapter_module_stages(db, module_id=module_id, user_id=current_user.id)
             
         return {"data": module_stages}
@@ -194,6 +239,7 @@ def read_stages(module_id: int, current_user: User = Depends(get_current_user), 
             content={"status": False, "error": str(e)},
             status_code=500,
         )
+        
 @study_course_views.post("/enroll/{course_id}")
 def enroll_student(course_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     student = db.query(Student).get(current_user.id)
@@ -357,6 +403,7 @@ def read_stage(stage_id: int, current_user: User = Depends(get_current_user), db
     course_id = None
     if stage.module:
         course_id = stage.module.chapter.course_id
+    
     # Verify if the student is enrolled in the course corresponding to the stage
     course_enrollment = db.query(CourseEnrollment).filter(
         CourseEnrollment.course_id == course_id,
@@ -365,6 +412,17 @@ def read_stage(stage_id: int, current_user: User = Depends(get_current_user), db
     
     if not course_enrollment:
         raise HTTPException(status_code=403, detail="You are not enrolled in this course")
+    
+    # Check the stage progress or create if it doesn't exist
+    progress = db.query(StageProgress).filter_by(student_id=current_user.id, stage_id=stage_id).first()
+
+    if progress:
+
+        if progress.start_time is None:
+            # If progress exists but start_time is None, update it
+            progress.start_time = datetime.utcnow()
+            db.commit()
+            db.refresh(progress)
     
     # Format the data based on the stage type
     if isinstance(stage, QuizLesson):

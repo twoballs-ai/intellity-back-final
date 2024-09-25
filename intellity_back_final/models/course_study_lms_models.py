@@ -67,6 +67,7 @@ class ChapterProgress(Base):
     student_id: Mapped[int] = mapped_column(ForeignKey("student_model.id"))
     chapter_id: Mapped[int] = mapped_column(ForeignKey("chapter_model.id"))
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_locked: Mapped[bool] = mapped_column(Boolean, default=False)
     start_time: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     end_time: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
 
@@ -82,6 +83,7 @@ class ChapterProgress(Base):
             "student_id": self.student_id,
             "chapter_id": self.chapter_id,
             "is_completed": self.is_completed,
+            "is_locked":self.is_locked,
             "start_time": self.start_time,
             "end_time": self.end_time,
         }
@@ -101,7 +103,7 @@ class ModuleProgress(Base):
     student_id: Mapped[int] = mapped_column(ForeignKey("student_model.id"))
     module_id: Mapped[int] = mapped_column(ForeignKey("module_model.id"))
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
-    start_time: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
+    start_time: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     end_time: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
 
     module: Mapped["Module"] = relationship("Module", single_parent=True, cascade="all, delete-orphan")
@@ -117,7 +119,7 @@ class StageProgress(Base):
     student_id: Mapped[int] = mapped_column(ForeignKey("student_model.id"))
     stage_id: Mapped[int] = mapped_column(ForeignKey("stage_model.id"))
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
-    start_time: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
+    start_time: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     end_time: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
 
     stage: Mapped["Stage"] = relationship("Stage", back_populates="stage_progress", single_parent=True, cascade="all, delete-orphan")

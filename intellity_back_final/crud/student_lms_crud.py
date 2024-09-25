@@ -50,7 +50,6 @@ def update_chapter_progress(db: Session, student_id: int, chapter_id: int, is_co
             student_id=student_id,
             chapter_id=chapter_id,
             is_completed=is_completed,
-            start_time=datetime.utcnow(),
             end_time=datetime.utcnow() if is_completed else None
         )
         db.add(progress)
@@ -68,7 +67,6 @@ def update_module_progress(db: Session, student_id: int, module_id: int, is_comp
             student_id=student_id,
             module_id=module_id,
             is_completed=is_completed,
-            start_time=datetime.utcnow(),
             end_time=datetime.utcnow() if is_completed else None
         )
         db.add(progress)
@@ -87,7 +85,6 @@ def update_stage_progress(db: Session, student_id: int, stage_id: int, is_comple
             student_id=student_id,
             stage_id=stage_id,
             is_completed=is_completed,
-            start_time=datetime.utcnow(),
             end_time=datetime.utcnow() if is_completed else None
         )
         db.add(progress)

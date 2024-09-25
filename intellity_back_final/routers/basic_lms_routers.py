@@ -1,15 +1,10 @@
 from io import BytesIO
 import os
 from sqlalchemy.orm import Session
-from datetime import datetime
+
 from intellity_back_final.Minio import download_file
 from intellity_back_final.crud.basic_lms_crud import get_courses_by_cat, get_recent_courses
-from intellity_back_final.crud.checker_course_lms_crud import are_all_chapters_completed, are_all_lessons_completed, are_all_modules_completed, is_course_completed
-from intellity_back_final.crud.student_lms_crud import enroll_student_in_course, update_chapter_progress, update_module_progress, update_stage_progress
-from intellity_back_final.models.course_study_lms_models import CourseEnrollment, ChapterProgress, ModuleProgress, StageProgress
-from typing import List, Union
-import mimetypes
-from sqlalchemy.exc import IntegrityError
+
 from fastapi import (
     APIRouter,
     Depends,
