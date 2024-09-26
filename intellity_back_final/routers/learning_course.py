@@ -103,14 +103,19 @@ def check_enrollment(course_id: int, current_user: User = Depends(get_current_us
             },
             status_code=200,
         )
-@study_course_views.patch("/chapter_start/{chapter_id}")
-def update_chapter_progress(chapter_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@study_course_views.patch("/chapter_patch/{chapter_id}")
+def update_chapter_progress(
+    chapter_id: int, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db),
+    update_locked: bool = Query(default=False, description="Update lock status")
+):
     # Получаем главу по ID
     chapter = db.query(ChapterModel).filter_by(id=chapter_id).first()
-    
+
     if chapter is None:
         raise HTTPException(status_code=404, detail="Chapter not found")
-    
+
     # Получаем ID курса, к которому принадлежит глава
     course_id = chapter.course_id
 
@@ -119,10 +124,10 @@ def update_chapter_progress(chapter_id: int, current_user: User = Depends(get_cu
         CourseEnrollment.course_id == course_id,
         CourseEnrollment.student_id == current_user.id
     ).first()
-    
+
     if not course_enrollment:
         raise HTTPException(status_code=403, detail="You are not enrolled in this course")
-    
+
     # Проверяем прогресс по главе или создаем новый, если его нет
     progress = db.query(ChapterProgress).filter_by(student_id=current_user.id, chapter_id=chapter_id).first()
 
@@ -130,14 +135,20 @@ def update_chapter_progress(chapter_id: int, current_user: User = Depends(get_cu
         # Если прогресс есть, но start_time равен None, обновляем его
         if progress.start_time is None:
             progress.start_time = datetime.utcnow()
-            db.commit()
-            db.refresh(progress)
-    
+
+        # Если нужно обновить статус блокировки
+        if update_locked:
+            progress.is_locked = False
+
+        db.commit()
+        db.refresh(progress)
+
     # Возвращаем информацию о главе и прогрессе
     chapter_data = chapter.to_dict()
     chapter_data['progress'] = {
         'start_time': progress.start_time.isoformat() if progress.start_time else None,
         'is_completed': progress.is_completed,
+        'is_locked': progress.is_locked,
         'end_time': progress.end_time.isoformat() if progress.end_time else None,
     }
 
@@ -148,7 +159,6 @@ def update_chapter_progress(chapter_id: int, current_user: User = Depends(get_cu
         },
         status_code=200,
     )
-
 
     
 @study_course_views.get("/learning-course-chapter-list/{course_id}")
@@ -471,37 +481,62 @@ def check_quiz_answers(stage_id: int, answers: List[int], db: Session = Depends(
         )
 
 
+
 @study_course_views.post("/start_exam/{chapter_id}")
-def start_exam(chapter_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Fetch the chapter progress for the current user and the given chapter ID
-    chapter_progress = db.query(ChapterProgress).filter_by(
-        student_id=current_user.id,
-        chapter_id=chapter_id
+def update_chapter_progress(
+    chapter_id: int, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db),
+):
+    # Получаем главу по ID
+    chapter = db.query(ChapterModel).filter_by(id=chapter_id).first()
+
+    if chapter is None:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+
+    # Получаем ID курса, к которому принадлежит глава
+    course_id = chapter.course_id
+
+    # Проверяем, подписан ли студент на курс
+    course_enrollment = db.query(CourseEnrollment).filter(
+        CourseEnrollment.course_id == course_id,
+        CourseEnrollment.student_id == current_user.id
     ).first()
 
-    if not chapter_progress:
-        raise HTTPException(status_code=404, detail="Chapter progress not found")
+    if not course_enrollment:
+        raise HTTPException(status_code=403, detail="You are not enrolled in this course")
 
-    # Update the start_time to the current datetime
-    chapter_progress.start_time = datetime.utcnow()
+    # Проверяем прогресс по главе или создаем новый, если его нет
+    progress = db.query(ChapterProgress).filter_by(student_id=current_user.id, chapter_id=chapter_id).first()
 
-    # Commit the changes to the database
-    db.commit()
+    if progress:
+        # Если прогресс есть, но start_time равен None, обновляем его
+        if progress.start_time is None:
+            progress.start_time = datetime.utcnow()
 
-    # Convert datetime to string for JSON serialization
-    start_time_str = chapter_progress.start_time.isoformat()
+        # Если нужно обновить статус блокировки
+        if progress.is_locked is True:
+            progress.is_locked = False
 
-    # Return JSON response with serialized datetime
+        db.commit()
+        db.refresh(progress)
+
+    # Возвращаем информацию о главе и прогрессе
+    chapter_data = chapter.to_dict()
+    chapter_data['progress'] = {
+        'start_time': progress.start_time.isoformat() if progress.start_time else None,
+        'is_completed': progress.is_completed,
+        'is_locked': progress.is_locked,
+        'end_time': progress.end_time.isoformat() if progress.end_time else None,
+    }
+
     return JSONResponse(
         content={
             "status": True,
-            "message": "Exam started successfully",
-            "start_time": start_time_str
+            "data": chapter_data,
         },
         status_code=200,
     )
-
-
 # @study_course_views.post("/submit_exam/{chapter_id}")
 # def submit_exam(chapter_id: int, answers: List[schemas.Answer], db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
 #     return ExamService.submit_exam(chapter_id, current_user.id, answers, db)
