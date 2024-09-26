@@ -118,7 +118,7 @@ def read_courses(course_id: int, current_user: User = Depends(get_current_user),
 
 @lms_views.post("/course/")
 def create_course(
-    title: str = Form(..., max_length=30),
+    title: str = Form(..., max_length=100),
     description: str = Form(None),
     category: int = Form(...),
     current_user: User = Depends(type_checker(["teacher_model"])),
@@ -151,7 +151,7 @@ def create_course(
         course=lms_schemas.CourseCreate(title=title, description=description, category=category, status_id=default_status_id),
         user_id=current_user.id,
         cover_image_name=file.filename,
-        cover_path=""
+
     )
     if not course_create:
         raise HTTPException(status_code=404, detail="Course not found")

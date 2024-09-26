@@ -20,7 +20,7 @@ class CourseCategory(CourseCategoryBase):
         from_attributes = True
 
 class CourseBase(BaseModel):
-    title: str = Field(..., max_length=30)
+    title: str = Field(..., max_length=100)
     description: Optional[str]
     category: int
     status_id: int

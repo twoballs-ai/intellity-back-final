@@ -115,11 +115,15 @@ def create_students_tables(mapper, connection, target):
     # Найти все главы, модули и уроки, относящиеся к курсу
     chapters = db.query(Chapter).filter(Chapter.course_id == course_id).all()
     for chapter in chapters:
+        # Определить значение is_locked для экзаменационных глав
+        is_locked = True if chapter.is_exam else False
+
         # Создать запись прогресса для главы
         chapter_progress = ChapterProgress(
             student_id=student_id,
             chapter_id=chapter.id,
             is_completed=False,
+            is_locked=is_locked  # Устанавливаем is_locked в зависимости от типа главы
         )
         db.add(chapter_progress)
         db.flush()  # Сохранить изменения, чтобы получить ID
@@ -131,7 +135,6 @@ def create_students_tables(mapper, connection, target):
                 student_id=student_id,
                 module_id=module.id,
                 is_completed=False,
-                start_time=datetime.utcnow()
             )
             db.add(module_progress)
             db.flush()  # Сохранить изменения, чтобы получить ID
@@ -143,12 +146,12 @@ def create_students_tables(mapper, connection, target):
                     student_id=student_id,
                     stage_id=stage.id,
                     is_completed=False,
-                    start_time=datetime.utcnow()
                 )
                 db.add(stage_progress)
                 db.flush()
 
     db.commit()
+
 
 
 
@@ -313,13 +316,12 @@ def after_delete_module(mapper, connection, target):
             session.rollback()
             print(f"Exception: {e}")
             raise
-
 @event.listens_for(Chapter, 'after_insert')
 def after_insert_chapter(mapper, connection, target):
     with Session(bind=connection) as session:
         
         try:
-
+            # Обновляем количество глав в курсе
             course = session.query(Course).filter(Course.id == target.course_id).first()
             course.total_chapters += 1
             session.add(course)
@@ -337,10 +339,15 @@ def after_insert_chapter(mapper, connection, target):
             session.close()
 
 def create_chapter_progress(session, enrollment, chapter):
+    # Определить значение is_locked для экзаменационных глав
+    is_locked = True if chapter.is_exam else False
+
+    # Создание записи прогресса для главы
     chapter_progress = ChapterProgress(
         student_id=enrollment.student_id,
         chapter_id=chapter.id,
-        is_completed=False  # Изначально глава не завершена
+        is_completed=False,  # Изначально глава не завершена
+        is_locked=is_locked   # Устанавливаем is_locked в зависимости от типа главы
     )
     session.add(chapter_progress)
 
