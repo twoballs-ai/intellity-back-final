@@ -6,13 +6,16 @@ services:
     environment:
       - SQLALCHEMY_DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@79.174.94.29:5432/courserio_db
       - MINIO_URL=79.174.94.29:9000
-
-    ports:
-      - "8000:8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend-router.rule=Host(`backend.courserio.ru`)"
+      - "traefik.http.routers.backend-router.entryPoints=websecure"
+      - "traefik.http.routers.backend-router.tls.certresolver=letsencrypt"
+      - "traefik.http.services.backend-service.loadbalancer.server.port=8000"
     restart: unless-stopped
     networks:
-      - courserio_network
+      - traefik_network
 
 networks:
-  courserio_network:
+  traefik_network:
     external: true
