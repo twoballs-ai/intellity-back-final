@@ -3,7 +3,7 @@
 # Настройки базы данных
 export PGPASSWORD="gGHJDKSDK!UEssa09984!_KK"
 PGUSER="postgres"
-PGHOST="80.78.243.39"
+PGHOST="79.174.94.29"
 PGDATABASE="courserio_db"
 PGPORT=5432
 

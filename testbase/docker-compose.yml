@@ -16,7 +16,7 @@ services:
   minio:
     image: minio/minio:latest
     restart: always
-    container_name: minio
+    container_name: minio_courserio
     ports:
       - "9000:9000"
       - "9001:9001"
